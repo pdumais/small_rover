@@ -1,0 +1,64 @@
+
+
+
+
+
+
+Pending Design
+    Frame
+        with rotating steering base
+    Power supply
+        battery: nimh, ni-ion, 12v. check at BatteryExpert
+        regulator for 5V
+        find old drill?
+    Controller
+        The Dualsense does not support BLE, but the esp32s3 is only BLE. So we need to install the PS5 firmware on a regular esp32
+        
+    Camera
+        stream thru wifi
+            how to do this thru esp32?
+    Arm
+        simple claw. 4 motors max, so that we can control with ps5 controller
+
+    GPS
+        to set path to follow
+        or to set boundaries to not go into
+
+
+Steps
+    Wiating for order:
+        hex adapters to use  old rc car wheels
+        drv8871
+
+    Test ps5 controller
+        use huzzah
+        send data thru i2c and receive it from other ESP
+        ESP should set servo position based on left stick
+
+    Make brackets for wheels and motor
+        test motor speed and control with PWM using DRV8871
+        make a bracket by templating the holes
+        modular. Can pivot or be fixed on vehicle frame.
+
+    firmware
+        throttle with R2
+        reverse using L2
+        steering with L stick right/left
+    
+    Make frame with:
+        axles
+        battery
+        steering with servo (see steering.webp)
+
+    Camera
+        can turn using servo
+
+    Arm
+         
+    GPS
+
+    LED/buzzer
+        when no PS5 controller
+        when GPS lost
+        when no wifi
+

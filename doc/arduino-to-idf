@@ -1,0 +1,18 @@
+git clone https://github.com/sukesh-ak/ESP-IDF-CPP-Template.git
+cd ESP-IDF-CPP-Template/
+docker run --rm -it --privileged -v $(pwd):/build -w /build -e HOME=/tmp espressif/idf:latest idf.py set-target esp32s3
+edit CMakeLists.txt, set project name to desired name
+mkdir -p components && cd components
+git submodule add https://github.com/espressif/arduino-esp32.git arduino 
+
+git submodule add https://github.com/rodneybakiskan/ps5-esp32.git ps5-idf
+cd ps5-esp/
+edit CMakeLists.txt
+cmake_minimum_required(VERSION 3.5)
+idf_component_register(SRCS "ps5.c"  "ps5Controller.cpp"  "ps5Controller.h"  "ps5.h"  "ps5_int.h"  "ps5_l2cap.c"  "ps5_parser.c"  "ps5_spp.c"
+                    INCLUDE_DIRS "src/."
+                    REQUIRES "arduino" # Library requires Arduino
+                    )
+
+project(esp32-idf)
+
