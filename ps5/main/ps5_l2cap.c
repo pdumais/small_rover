@@ -116,7 +116,9 @@ long ps5_l2cap_connect(BD_ADDR addr) {
 *******************************************************************************/
 long ps5_l2cap_reconnect(void) {
     long ret;
-    ret = L2CA_CONNECT_REQ(BT_PSM_HID_CONTROL, g_bd_addr, NULL, NULL);
+    
+    ret = L2CA_ErtmConnectReq(BT_PSM_HID_CONTROL, g_bd_addr, NULL);
+    //ret = L2CA_CONNECT_REQ(BT_PSM_HID_CONTROL, g_bd_addr, NULL, NULL);
     ESP_LOGE(ps5_TAG, "L2CA_CONNECT_REQ ret=%ld\n", ret);
     if (ret == 0) {
         return -1;
@@ -277,6 +279,7 @@ void ps5_l2cap_config_cfm_cback(uint16_t l2cap_cid, tL2CAP_CFG_INFO *p_cfg) {
     /* receiving the second config confirmation */
     bool prev_is_connected = is_connected;
     is_connected = l2cap_cid == l2cap_interrupt_channel;
+    ESP_LOGI(ps5_TAG, "=======  %i / %i / %i / %i", is_connected, l2cap_cid, l2cap_interrupt_channel, prev_is_connected);
     if (prev_is_connected != is_connected) {
         ps5ConnectEvent(is_connected);
     }

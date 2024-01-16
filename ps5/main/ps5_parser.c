@@ -7,7 +7,8 @@
 /*                            L O C A L    T Y P E S */
 /********************************************************************************/
 
-enum ps5_packet_index {
+enum ps5_packet_index
+{
   packet_index_analog_stick_lx = 11,
   packet_index_analog_stick_ly = 12,
   packet_index_analog_stick_rx = 13,
@@ -23,7 +24,8 @@ enum ps5_packet_index {
   packet_index_status = 42
 };
 
-enum ps5_button_mask {
+enum ps5_button_mask
+{
   button_mask_up = 0,
   button_mask_right = 0b00000010,
   button_mask_down = 0b00000100,
@@ -56,7 +58,8 @@ enum ps5_button_mask {
   button_mask_touchpad = 0b10
 };
 
-enum ps5_status_mask {
+enum ps5_status_mask
+{
   ps5_status_mask_battery = 0b00001111,
   ps5_status_mask_charging = 0b00010000,
   ps5_status_mask_audio = 0b00100000,
@@ -67,11 +70,11 @@ enum ps5_status_mask {
 /*              L O C A L    F U N C T I O N     P R O T O T Y P E S */
 /********************************************************************************/
 
-ps5_sensor_t parsePacketSensor(uint8_t* packet);
-ps5_status_t parsePacketStatus(uint8_t* packet);
-ps5_analog_stick_t parsePacketAnalogStick(uint8_t* packet);
-ps5_analog_button_t parsePacketAnalogButton(uint8_t* packet);
-ps5_button_t parsePacketButtons(uint8_t* packet);
+ps5_sensor_t parsePacketSensor(uint8_t *packet);
+ps5_status_t parsePacketStatus(uint8_t *packet);
+ps5_analog_stick_t parsePacketAnalogStick(uint8_t *packet);
+ps5_analog_button_t parsePacketAnalogButton(uint8_t *packet);
+ps5_button_t parsePacketButtons(uint8_t *packet);
 ps5_event_t parseEvent(ps5_t prev, ps5_t cur);
 
 /********************************************************************************/
@@ -86,7 +89,8 @@ static ps5_event_callback_t ps5_event_cb = NULL;
 /********************************************************************************/
 void parserSetEventCb(ps5_event_callback_t cb) { ps5_event_cb = cb; }
 
-void parsePacket(uint8_t* packet) {
+void parsePacket(uint8_t *packet)
+{
   ps5_t prev_ps5 = ps5;
 
   ps5.button = parsePacketButtons(packet);
@@ -94,7 +98,7 @@ void parsePacket(uint8_t* packet) {
   ps5.analog.button = parsePacketAnalogButton(packet);
   // ps5.sensor = parsePacketSensor(packet);
   ps5.status = parsePacketStatus(packet);
-  ps5.latestPacket = packet;
+  ps5.latestPacket = true;
 
   ps5_event_t ps5Event = parseEvent(prev_ps5, ps5);
 
@@ -108,7 +112,8 @@ void parsePacket(uint8_t* packet) {
 /******************/
 /*    E V E N T   */
 /******************/
-ps5_event_t parseEvent(ps5_t prev, ps5_t cur) {
+ps5_event_t parseEvent(ps5_t prev, ps5_t cur)
+{
   ps5_event_t ps5Event;
 
   /* Button down events */
@@ -183,7 +188,8 @@ ps5_event_t parseEvent(ps5_t prev, ps5_t cur) {
 /********************/
 /*    A N A L O G   */
 /********************/
-ps5_analog_stick_t parsePacketAnalogStick(uint8_t* packet) {
+ps5_analog_stick_t parsePacketAnalogStick(uint8_t *packet)
+{
   ps5_analog_stick_t ps5AnalogStick;
 
   const uint8_t offset = 128;
@@ -196,7 +202,8 @@ ps5_analog_stick_t parsePacketAnalogStick(uint8_t* packet) {
   return ps5AnalogStick;
 }
 
-ps5_analog_button_t parsePacketAnalogButton(uint8_t* packet) {
+ps5_analog_button_t parsePacketAnalogButton(uint8_t *packet)
+{
   ps5_analog_button_t ps5AnalogButton;
 
   ps5AnalogButton.l2 = packet[packet_index_analog_l2];
@@ -209,7 +216,8 @@ ps5_analog_button_t parsePacketAnalogButton(uint8_t* packet) {
 /*   B U T T O N S   */
 /*********************/
 
-ps5_button_t parsePacketButtons(uint8_t* packet) {
+ps5_button_t parsePacketButtons(uint8_t *packet)
+{
   ps5_button_t ps5_button;
   uint8_t frontBtnData = packet[packet_index_button_standard];
   uint8_t extraBtnData = packet[packet_index_button_extra];
@@ -250,7 +258,8 @@ ps5_button_t parsePacketButtons(uint8_t* packet) {
 /*******************************/
 /*   S T A T U S   F L A G S   */
 /*******************************/
-ps5_status_t parsePacketStatus(uint8_t* packet) {
+ps5_status_t parsePacketStatus(uint8_t *packet)
+{
   ps5_status_t ps5Status;
 
   ps5Status.battery = packet[packet_index_status] & ps5_status_mask_battery;
@@ -264,7 +273,8 @@ ps5_status_t parsePacketStatus(uint8_t* packet) {
 /********************/
 /*   S E N S O R S  */
 /********************/
-ps5_sensor_t parsePacketSensor(uint8_t* packet) {
+ps5_sensor_t parsePacketSensor(uint8_t *packet)
+{
   ps5_sensor_t ps5Sensor = {0};
   /*
       const uint16_t offset = 0x200;

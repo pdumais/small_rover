@@ -15,6 +15,7 @@ Everything runs in docker, no need to install ESP IDF
 # Pairing
 On the first usage, the dualsense needs to be put in pairing mode. Then the pairing will be done automatically.
 
+
 # Known issues
 There is sometimes a crash:
     E (30465) BT_L2CAP: L2CAP got conn_comp in bad state: 4  status: 0x4

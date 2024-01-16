@@ -1,64 +1,55 @@
+# currently working on:
+    paint frame
+    reassemble
+    how to fit arm on there?
 
 
 
 
+# Steps
+    make a 3.5" circle and weld on lazy suzan
+    Lock "latest" in docker commands to IDF release-v5.1
 
+    Implement sleep mode where very low power is consumed. I can then wakeup the bot using a switch or by sending a wifi packet
 
-Pending Design
-    Frame
-        with rotating steering base
-    Power supply
-        battery: nimh, ni-ion, 12v. check at BatteryExpert
-        regulator for 5V
-        find old drill?
-    Controller
-        The Dualsense does not support BLE, but the esp32s3 is only BLE. So we need to install the PS5 firmware on a regular esp32
-        
-    Camera
-        stream thru wifi
-            how to do this thru esp32?
+    PS5 controller
+        when booting while pressing a button, try to pair with a controller for 10s, within the main thread.
+        Use a panel mount momentary button wired to ESP
+
     Arm
-        simple claw. 4 motors max, so that we can control with ps5 controller
+        servo control with PS5 controller
+            controller value does not set the angle, it sets a speed at which we increase the angle
+                i.e: if value 127, then increase the angle by 1 every second. If 64, increase by 0.5 every second
 
+        rotating base
+            use lady-suzan bearing. 3 to 4"
+            rotate with servo attached to middle of plate.
+        boom
+            150Kg servo
+        arm
+        grapple
+
+
+# Other ideas
     GPS
-        to set path to follow
-        or to set boundaries to not go into
-
-
-Steps
-    Wiating for order:
-        hex adapters to use  old rc car wheels
-        drv8871
-
-    Test ps5 controller
-        use huzzah
-        send data thru i2c and receive it from other ESP
-        ESP should set servo position based on left stick
-
-    Make brackets for wheels and motor
-        test motor speed and control with PWM using DRV8871
-        make a bracket by templating the holes
-        modular. Can pivot or be fixed on vehicle frame.
-
-    firmware
-        throttle with R2
-        reverse using L2
-        steering with L stick right/left
-    
-    Make frame with:
-        axles
-        battery
-        steering with servo (see steering.webp)
-
     Camera
-        can turn using servo
-
-    Arm
+    LIDAR
          
-    GPS
+# Current Issues
+    - ps5 board is receiving a lot of ps5 messages per seconds. 
+        try adding log in the arduino lib and test it.  ~/Arduino/libraries/ps5Controller/src/ps5_l2cap.c :ps5_l2cap_data_ind_cback
 
-    LED/buzzer
-        when no PS5 controller
-        when GPS lost
-        when no wifi
 
+# Pending Design
+    Arm
+        ?? Get 12V servos? Or get a high current step-down?
+            https://www.amazon.ca/Converter-1-2-32V-Adjustable-Voltage-Regulator/dp/B09P485XL7
+        Backhoe with grapple
+        needs 4 servos
+            mg996R:
+                Stall torque: 12kg
+                weight: 60g
+                Amps: 3    <-- cannot use a small buck converter for all servos
+                Voltage: 5v
+
+===========================================================

@@ -1,0 +1,170 @@
+.statustable {
+    width: 100%;
+    border-collapse: collapse;
+    border-bottom: 1px solid #C7C7C7;
+}
+
+.statustable TD {
+    border-bottom: 1px solid #C7C7C7;
+    padding-top: 5px;
+    min-width: 150px;
+
+}
+
+.pins {
+    min-width: 400px;
+    max-width: 1200px;
+    height: 40px;
+    padding: 5px;
+    margin: auto;
+    margin-bottom: 10px;
+    text-align: left;
+    display: flex;
+    background-color: #f3f3f3;
+    border-radius: 5px;
+    align-items: center;
+    box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.pinsheader {
+    text-align: center;
+}
+
+.pinscol1 {
+    padding-left: 15px;
+    float: left;
+    width: 5%;
+}
+
+.pinscol2 {
+    float: left;
+    width: 25%;
+}
+
+.pinscol3 {
+    float: left;
+    width: 20%;
+    text-align: center;
+}
+
+.pinscol4 {
+    float: left;
+    width: 10%;
+    margin-right: 30px;
+}
+
+.pinscol5 {
+    width: 35%;
+    float: left;
+    text-align: right;
+    padding-right: 15px;
+}
+
+body {
+    background-color: #8c9197;
+    color: #22313f;
+    padding-top: 25px;
+    font-family: Verdana, sans-serif;
+    padding: 10px;
+}
+
+SELECT {
+    border: 1px solid #cdd8d9;
+    width: 90%;
+    height: 40px;
+    background-color: #ffffff;
+    border-radius: 5px;
+}
+
+INPUT {
+    height: 35px;
+    padding: 5px;
+    width: 90%;
+    border: 1px solid #cdd8d9;
+}
+
+.content {
+    width: 100%;
+    display: block;
+}
+
+
+button {
+    width: 120px;
+    height: 40px;
+    color: white;
+    background-image: linear-gradient(-180deg, #21d1e3 0%, #00a4bf 100%);
+    border-radius: 5px;
+    box-sizing: border-box;
+    justify-content: center;
+    padding: 10px;
+    text-decoration: none;
+    border: 0;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    font-size: large;
+}
+
+button:hover {
+    background-image: linear-gradient(-180deg, #b4f8ff 0%, #78b7c1 100%);
+}
+
+
+.metricbox {
+    height: 25px;
+    line-height: 25px;
+    border-radius: 10px;
+    padding: 5px 20px 5px 20px;
+    border: 0;
+}
+
+.metricbox span {
+    height: 25px;
+    line-height: 25px;
+    color: white;
+    background-color: #4194ad;
+    border-radius: 10px;
+    padding: 5px 20px 5px 20px;
+    border: 0;
+}
+
+
+input[type=checkbox] {
+    height: 0;
+    width: 0;
+    visibility: hidden;
+}
+
+label {
+    cursor: pointer;
+    text-indent: -9999px;
+    width: 70px;
+    height: 30px;
+    background: grey;
+    display: block;
+    border-radius: 100px;
+    position: relative;
+}
+
+label:after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 20px;
+    height: 20px;
+    background: #fff;
+    border-radius: 20px;
+    transition: 0.3s;
+}
+
+input:checked+label {
+    background: #34495e;
+}
+
+input:checked+label:after {
+    left: calc(100% - 5px);
+    transform: translateX(-100%);
+}

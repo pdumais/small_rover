@@ -17,9 +17,9 @@ static ps5_t _data;
 static ps5_event_t _event;
 static ps5_cmd_t _output;
 
-#define ESP_BD_ADDR_HEX_PTR(addr) \
-  (uint8_t*)addr + 0, (uint8_t*)addr + 1, (uint8_t*)addr + 2, \
-  (uint8_t*)addr + 3, (uint8_t*)addr + 4, (uint8_t*)addr + 5
+#define ESP_BD_ADDR_HEX_PTR(addr)                                \
+  (uint8_t *)addr + 0, (uint8_t *)addr + 1, (uint8_t *)addr + 2, \
+      (uint8_t *)addr + 3, (uint8_t *)addr + 4, (uint8_t *)addr + 5
 static void _event_callback(ps5_t data, ps5_event_t event);
 static void _connection_callback(uint8_t isConnected);
 
@@ -27,85 +27,98 @@ callback_t _callback_event = 0;
 callback_t _callback_connect = 0;
 callback_t _callback_disconnect = 0;
 
-
-ps5_t* ps5_get_data()
+ps5_t *ps5_get_data()
 {
   return &_data;
 }
 
-ps5_event_t* ps5_get_event()
+ps5_event_t *ps5_get_event()
 {
   return &_event;
 }
 
-bool btStarted(){
-    return (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_ENABLED);
+bool btStarted()
+{
+  return (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_ENABLED);
 }
 
-bool btStartMode(esp_bt_mode_t esp_bt_mode){
-    esp_bt_controller_config_t cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    // esp_bt_controller_enable(MODE) This mode must be equal as the mode in “cfg” of esp_bt_controller_init().
-    cfg.mode=esp_bt_mode;
-    if(cfg.mode == ESP_BT_MODE_CLASSIC_BT) {
-        esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
-    }
+bool btStartMode(esp_bt_mode_t esp_bt_mode)
+{
+  esp_bt_controller_config_t cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+  // esp_bt_controller_enable(MODE) This mode must be equal as the mode in “cfg” of esp_bt_controller_init().
+  cfg.mode = esp_bt_mode;
 
-    if(esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_ENABLED){
-        return true;
+  if (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_ENABLED)
+  {
+    return true;
+  }
+  esp_err_t ret;
+  if (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_IDLE)
+  {
+    if ((ret = esp_bt_controller_init(&cfg)) != ESP_OK)
+    {
+      ESP_LOGE(TAG, "initialize controller failed: %s", esp_err_to_name(ret));
+      return false;
     }
-    esp_err_t ret;
-    if(esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_IDLE){
-        if((ret = esp_bt_controller_init(&cfg)) != ESP_OK) {
-            ESP_LOGE(TAG, "initialize controller failed: %s", esp_err_to_name(ret));
-            return false;
-        }
-        while(esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_IDLE){}
+    while (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_IDLE)
+    {
     }
-    if(esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_INITED){
-        if((ret = esp_bt_controller_enable(esp_bt_mode)) != ESP_OK) {
-            ESP_LOGE(TAG, "BT Enable mode=%d failed %s", BT_MODE, esp_err_to_name(ret));
-            return false;
-        }
+  }
+  if (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_INITED)
+  {
+    if ((ret = esp_bt_controller_enable(esp_bt_mode)) != ESP_OK)
+    {
+      ESP_LOGE(TAG, "BT Enable mode=%d failed %s", BT_MODE, esp_err_to_name(ret));
+      return false;
     }
-    if(esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_ENABLED){
-        return true;
-    }
-    ESP_LOGE(TAG, "BT Start failed");
-    return false;
+  }
+  if (esp_bt_controller_get_status() == ESP_BT_CONTROLLER_STATUS_ENABLED)
+  {
+    return true;
+  }
+  ESP_LOGE(TAG, "BT Start failed");
+  return false;
 }
 
-bool btStart() {
-    return btStartMode(BT_MODE);
+bool btStart()
+{
+  return btStartMode(BT_MODE);
 }
 
-bool ps5_begin(const char* mac) {
+bool ps5_begin(const char *mac)
+{
   esp_bd_addr_t addr;
-    
-  if (sscanf(mac, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", ESP_BD_ADDR_HEX_PTR(addr)) != ESP_BD_ADDR_LEN) {
-        ESP_LOGE(TAG, "Can't parse MAC");
-        return false;
+
+  if (sscanf(mac, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", ESP_BD_ADDR_HEX_PTR(addr)) != ESP_BD_ADDR_LEN)
+  {
+    ESP_LOGE(TAG, "Can't parse MAC");
+    return false;
   }
 
   ps5_l2cap_connect(addr);
-  // DO NOT USE THIS ps5SetBluetoothMacAddress(addr);
 
   ps5SetEventCallback(&_event_callback);
   ps5SetConnectionCallback(&_connection_callback);
 
-  if (!btStarted() && !btStart()) {
+  if (!btStarted() && !btStart())
+  {
     return false;
   }
 
   esp_bluedroid_status_t btState = esp_bluedroid_get_status();
-  if (btState == ESP_BLUEDROID_STATUS_UNINITIALIZED) {
-    if (esp_bluedroid_init()) {
+  if (btState == ESP_BLUEDROID_STATUS_UNINITIALIZED)
+  {
+    if (esp_bluedroid_init())
+    {
       ESP_LOGE(TAG, "Can't init bluedroid (1)");
       return false;
     }
   }
 
-  if (btState != ESP_BLUEDROID_STATUS_ENABLED) {
-    if (esp_bluedroid_enable()) {
+  if (btState != ESP_BLUEDROID_STATUS_ENABLED)
+  {
+    if (esp_bluedroid_enable())
+    {
       ESP_LOGE(TAG, "Can't init bluedroid (2)");
       return false;
     }
@@ -117,32 +130,36 @@ bool ps5_begin(const char* mac) {
 
 unsigned long millis()
 {
-  return (unsigned long) (esp_timer_get_time() / 1000ULL);  
+  return (unsigned long)(esp_timer_get_time() / 1000ULL);
 }
 
-bool ps5_isConnected() {
+bool ps5_isConnected()
+{
   bool connected = ps5IsConnected();
-  static unsigned long tryReconnectAt = 0;
-  if (!connected && millis() - tryReconnectAt > 5000UL) {
+  /*static unsigned long tryReconnectAt = 0;
+  if (!connected && millis() - tryReconnectAt > 5000UL)
+  {
     tryReconnectAt = millis();
-    ps5_l2cap_reconnect();
-  }
+    // ps5_l2cap_reconnect();
+  }*/
   return connected;
 }
 
-
-void ps5_setLed(uint8_t r, uint8_t g, uint8_t b) {
+void ps5_setLed(uint8_t r, uint8_t g, uint8_t b)
+{
   _output.r = r;
   _output.g = g;
   _output.b = b;
 }
 
-void ps5_setRumble(uint8_t small, uint8_t large) {
+void ps5_setRumble(uint8_t small, uint8_t large)
+{
   _output.smallRumble = small;
   _output.largeRumble = large;
 }
 
-void ps5_setFlashRate(uint8_t onTime, uint8_t offTime) {
+void ps5_setFlashRate(uint8_t onTime, uint8_t offTime)
+{
   _output.flashOn = onTime / 10;
   _output.flashOff = offTime / 10;
 }
@@ -151,40 +168,46 @@ void ps5_sendToController() { ps5SetOutput(_output); }
 
 void ps5_attach(callback_t callback) { _callback_event = callback; }
 
-void ps5_attachOnConnect(callback_t callback) {
+void ps5_attachOnConnect(callback_t callback)
+{
   _callback_connect = callback;
 }
 
-void ps5_attachOnDisconnect(callback_t callback) {
+void ps5_attachOnDisconnect(callback_t callback)
+{
   _callback_disconnect = callback;
 }
 
-
-static void _event_callback(ps5_t data, ps5_event_t event) {
+static void _event_callback(ps5_t data, ps5_event_t event)
+{
   memcpy(&_data, &data, sizeof(ps5_t));
   memcpy(&_event, &event, sizeof(ps5_event_t));
 
-  if (_callback_event) {
+  if (_callback_event)
+  {
     _callback_event();
   }
 }
 
-static void _connection_callback(uint8_t isConnected) {
-  if (isConnected) {
+static void _connection_callback(uint8_t isConnected)
+{
+  if (isConnected)
+  {
     vTaskDelay(250 / portTICK_PERIOD_MS);
 
-    if (_callback_connect) {
+    if (_callback_connect)
+    {
       _callback_connect();
     }
   }
-  else {
-    if (_callback_disconnect) {
+  else
+  {
+    if (_callback_disconnect)
+    {
       _callback_disconnect();
     }
   }
 }
-
-uint8_t* ps5_LatestPacket() { return _data.latestPacket; }
 
 bool ps5_Right() { return _data.button.right; }
 bool ps5_Down() { return _data.button.down; }

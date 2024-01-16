@@ -10,20 +10,19 @@
 #include <esp_event.h>
 #include <nvs_flash.h>
 #include "driver/i2c.h"
+#include "driver/gpio.h"
 #include "ps5_controller.h"
+#include "common/i2c.h"
 
 #define DUALSENSE_MAC "D0:BC:C1:EC:AD:AC"
 #define GPIO_CTRL_LED 5
 
-#define DATA_LENGTH sizeof(ps5_t)
+#define I2C_MASTER_NUM 0
 #define I2C_SLAVE_SCL_IO 22
 #define I2C_SLAVE_SDA_IO 23
-#define I2C_SLAVE_NUM 0
-#define I2C_SLAVE_TX_BUF_LEN (8 * DATA_LENGTH)
-#define I2C_SLAVE_RX_BUF_LEN (8 * DATA_LENGTH)
-#define ESP_SLAVE_ADDR 0x28
 
 static const char *TAG = "ps5_main";
+static volatile ps5_t old_data = {0};
 
 void init_nvs()
 {
@@ -40,75 +39,126 @@ void init_nvs()
     }
 }
 
-void ps5_check(void *arg)
+static esp_err_t i2c_init(void)
 {
-    ps5_t old_data;
-    while (1)
-    {
-        gpio_set_level(GPIO_CTRL_LED, ps5_isConnected() ? 1 : 0);
-
-        while (!ps5_isConnected())
-        {
-            ESP_LOGI(TAG, "Trying to connect to controller");
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
-        }
-
-        ps5_t *data = ps5_get_data();
-
-        if (
-            data->button.right != old_data.button.right ||
-            data->button.left != old_data.button.left ||
-            data->button.up != old_data.button.up ||
-            data->button.down != old_data.button.down ||
-            data->button.square != old_data.button.square ||
-            data->button.circle != old_data.button.circle ||
-            data->button.cross != old_data.button.cross ||
-            data->button.triangle != old_data.button.triangle ||
-            data->button.l1 != old_data.button.l1 ||
-            data->button.r1 != old_data.button.r1 ||
-            data->button.l2 != old_data.button.l2 ||
-            data->button.r2 != old_data.button.r2 ||
-            data->button.l3 != old_data.button.l3 ||
-            data->button.r3 != old_data.button.r3 ||
-            abs(data->analog.stick.lx - old_data.analog.stick.lx) > 2 ||
-            abs(data->analog.stick.ly - old_data.analog.stick.ly) > 2 ||
-            abs(data->analog.stick.rx - old_data.analog.stick.rx) > 2 ||
-            abs(data->analog.stick.ry - old_data.analog.stick.ry) > 2 ||
-            abs(data->analog.button.l2 - old_data.analog.button.l2) > 2 ||
-            abs(data->analog.button.r2 - old_data.analog.button.r2) > 2)
-        {
-            ESP_LOGI(TAG, "PS5 Event");
-            size_t d_size = i2c_slave_write_buffer(I2C_SLAVE_NUM, data, sizeof(data), 1000 / portTICK_PERIOD_MS);
-            if (d_size == 0)
-            {
-                ESP_LOGW(TAG, "i2c slave tx buffer full");
-            }
-        }
-
-        memcpy(&old_data, data, sizeof(ps5_t));
-
-        vTaskDelay(100 / portTICK_PERIOD_MS); // Debounce to 100ms
-    }
-}
-
-static esp_err_t i2c_slave_init(void)
-{
-    int i2c_slave_port = I2C_SLAVE_NUM;
-    i2c_config_t conf_slave = {
+    ESP_LOGI(TAG, "i2c_init");
+    int i2c_master_port = 0;
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
         .sda_io_num = I2C_SLAVE_SDA_IO,
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_io_num = I2C_SLAVE_SCL_IO,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .mode = I2C_MODE_SLAVE,
-        .slave.addr_10bit_en = 0,
-        .slave.slave_addr = ESP_SLAVE_ADDR,
+        .master.clk_speed = 100000,
+        .clk_flags = 0,
     };
-    esp_err_t err = i2c_param_config(i2c_slave_port, &conf_slave);
-    if (err != ESP_OK)
+
+    i2c_param_config(i2c_master_port, &conf);
+    return i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
+}
+
+void set_checksum(ps5_t *data)
+{
+    data->checksum = 0;
+    uint8_t c = 0;
+    for (int i = 0; i < sizeof(ps5_t) - 1; i++)
     {
-        return err;
+        c += ((uint8_t *)data)[i];
     }
-    return i2c_driver_install(i2c_slave_port, conf_slave.mode, I2C_SLAVE_RX_BUF_LEN, I2C_SLAVE_TX_BUF_LEN, 0);
+    data->checksum = c;
+}
+
+void ps5_check(void *arg)
+{
+    bool was_connected = 0;
+
+    while (1)
+    {
+
+        if (!ps5_isConnected())
+        {
+            if (was_connected)
+            {
+                ESP_LOGI(TAG, "Controller disconnected");
+                was_connected = false;
+                ps5_t *data = ps5_get_data();
+                data->controller_connected = 0;
+                data->latestPacket = 1;
+                set_checksum(data);
+                i2c_master_write_to_device(I2C_MASTER_NUM, ESP_SLAVE_ADDR, data, sizeof(ps5_t), 1000);
+            }
+
+            gpio_set_level(GPIO_CTRL_LED, 0);
+            ESP_LOGI(TAG, "Not connected to PS5 controller");
+            vTaskDelay(3000 / portTICK_PERIOD_MS);
+            continue;
+        }
+
+        // At this point, we know the ps5 controller is connected
+        if (!was_connected)
+        {
+            ESP_LOGI(TAG, "Controller Connected");
+            was_connected = false;
+            ps5_t *data = ps5_get_data();
+            data->controller_connected = 1;
+            data->latestPacket = 1;
+            set_checksum(data);
+            i2c_master_write_to_device(I2C_MASTER_NUM, ESP_SLAVE_ADDR, data, sizeof(ps5_t), 1000);
+
+            was_connected = 1;
+        }
+
+        gpio_set_level(GPIO_CTRL_LED, 1);
+        ps5_t *data = ps5_get_data();
+        bool has_changes = (data->button.right != old_data.button.right ||
+                            data->button.left != old_data.button.left ||
+                            data->button.up != old_data.button.up ||
+                            data->button.down != old_data.button.down ||
+                            data->button.square != old_data.button.square ||
+                            data->button.circle != old_data.button.circle ||
+                            data->button.cross != old_data.button.cross ||
+                            data->button.triangle != old_data.button.triangle ||
+                            data->button.l1 != old_data.button.l1 ||
+                            data->button.r1 != old_data.button.r1 ||
+                            data->button.l2 != old_data.button.l2 ||
+                            data->button.r2 != old_data.button.r2 ||
+                            data->button.l3 != old_data.button.l3 ||
+                            data->button.r3 != old_data.button.r3 ||
+                            abs(data->analog.stick.lx - old_data.analog.stick.lx) > 2 ||
+                            abs(data->analog.stick.ly - old_data.analog.stick.ly) > 2 ||
+                            abs(data->analog.stick.rx - old_data.analog.stick.rx) > 2 ||
+                            abs(data->analog.stick.ry - old_data.analog.stick.ry) > 2 ||
+                            abs(data->analog.button.l2 - old_data.analog.button.l2) > 2 ||
+                            abs(data->analog.button.r2 - old_data.analog.button.r2) > 2);
+
+        if (has_changes)
+        {
+            ESP_LOGI(TAG, "PS5 Event");
+
+            memcpy(&old_data, data, sizeof(ps5_t));
+            old_data.latestPacket = true;
+            old_data.controller_connected = true;
+
+            set_checksum(&old_data);
+
+            esp_err_t err = i2c_master_write_to_device(I2C_MASTER_NUM, ESP_SLAVE_ADDR, &old_data, sizeof(ps5_t), 1000);
+            if (err != ESP_OK)
+            {
+                if (err == ESP_ERR_INVALID_STATE)
+                {
+                    ESP_LOGE(TAG, "i2c bus send: ESP_ERR_INVALID_STATE");
+                    /*//This is just temporary to help debug
+                    while (1)
+                    {
+                        vTaskDelay(1000 / portTICK_PERIOD_MS);
+                    } */
+                }
+                ESP_LOGE(TAG, "Error sending on i2c bus: %i", err);
+            }
+        }
+
+        vTaskDelay(50 / portTICK_PERIOD_MS); // Debounce
+    }
 }
 
 void app_main(void)
@@ -123,7 +173,7 @@ void app_main(void)
     o_conf.pull_down_en = 0;
     gpio_config(&o_conf);
 
-    ESP_ERROR_CHECK(i2c_slave_init());
+    ESP_ERROR_CHECK(i2c_init());
     ps5_begin(DUALSENSE_MAC);
     /* Initialize the event loop */
     ESP_ERROR_CHECK(esp_event_loop_create_default());

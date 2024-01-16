@@ -1,0 +1,38 @@
+#!/usr/bin/python3
+
+import sys
+import http.server
+import socketserver
+import threading
+import socket
+import time
+import requests
+
+PORT = 8114
+DIRECTORY = "build"
+
+httpd = None
+
+
+class OTAServer(socketserver.TCPServer):
+    def server_bind(self):
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.bind(self.server_address)
+
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=DIRECTORY, **kwargs)
+
+
+def start_server():
+    httpd.serve_forever()
+
+
+if __name__ == "__main__":
+    httpd = OTAServer(("", PORT), Handler)
+    t = threading.Thread(target=httpd.serve_forever)
+    t.start()
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(bytes("ota!", "utf-8"), ("192.168.4.1", 242))
