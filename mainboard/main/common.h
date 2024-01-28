@@ -19,5 +19,9 @@ typedef struct
     uint16_t rpm3;
     uint16_t rpm4;
     uint16_t speed;
+    uint8_t angle_rotator;
+    uint8_t angle_boom;
+    uint8_t angle_arm;
+    uint8_t angle_grapple;
     uint8_t controller_battery;
 } metrics_t;

@@ -13,9 +13,11 @@
 #include "driver/gpio.h"
 #include "ps5_controller.h"
 #include "common/i2c.h"
+#include "common/deepsleep.h"
 
 #define DUALSENSE_MAC "D0:BC:C1:EC:AD:AC"
 #define GPIO_CTRL_LED 5
+#define GPIO_SLEEP_BUTTON GPIO_NUM_4
 
 #define I2C_MASTER_NUM 0
 #define I2C_SLAVE_SCL_IO 22
@@ -161,9 +163,32 @@ void ps5_check(void *arg)
     }
 }
 
+void on_start_sleep()
+{
+    gpio_set_level(GPIO_CTRL_LED, 0);
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+    gpio_set_level(GPIO_CTRL_LED, 1);
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    gpio_set_level(GPIO_CTRL_LED, 0);
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+    gpio_set_level(GPIO_CTRL_LED, 1);
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    gpio_set_level(GPIO_CTRL_LED, 0);
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+    gpio_set_level(GPIO_CTRL_LED, 1);
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    gpio_set_level(GPIO_CTRL_LED, 0);
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+    gpio_set_level(GPIO_CTRL_LED, 1);
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    gpio_set_level(GPIO_CTRL_LED, 0);
+}
+
 void app_main(void)
 {
     init_nvs();
+
+    init_deep_sleep(GPIO_SLEEP_BUTTON, on_start_sleep);
 
     gpio_config_t o_conf = {};
     o_conf.pin_bit_mask |= (1ULL << GPIO_CTRL_LED);

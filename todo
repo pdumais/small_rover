@@ -1,55 +1,49 @@
 # currently working on:
-    paint frame
-    reassemble
-    how to fit arm on there?
-
-
-
-
-# Steps
-    make a 3.5" circle and weld on lazy suzan
-    Lock "latest" in docker commands to IDF release-v5.1
-
-    Implement sleep mode where very low power is consumed. I can then wakeup the bot using a switch or by sending a wifi packet
-
-    PS5 controller
-        when booting while pressing a button, try to pair with a controller for 10s, within the main thread.
-        Use a panel mount momentary button wired to ESP
-
+    Waiting for Battery. Final test
+    
     Arm
+        Make rotating base 
+
+
+
+# Tasks
+    Arm
+        Order servos
+        make a top shelf over the battery and main board to put stuff in.
+        make rotating platform
+            make a 3.5" circle and weld on lazy suzan
+                constrain build to that platform
+        make boom
+        make arm
+        Make claw
+
         servo control with PS5 controller
             controller value does not set the angle, it sets a speed at which we increase the angle
                 i.e: if value 127, then increase the angle by 1 every second. If 64, increase by 0.5 every second
 
-        rotating base
-            use lady-suzan bearing. 3 to 4"
-            rotate with servo attached to middle of plate.
-        boom
-            150Kg servo
-        arm
-        grapple
+    PCB for mainboard
+        4 DRV8871
+        socket for ESP
+        terminal headers
+
+    Deep sleep
+        Will servos use any current?
+        LEDs are still lit on both boards
+
+
+    PS5 controller
+        when booting while pressing a button, try to pair with a controller for 10s, within the main thread.
+        because if the controller is not paired, we need to pair it. And this can only be done if we use ps5_l2cap_reconnect() (active mode). We have stopped invoking this because it seems to conflict when listening for an incomming connection (passive). We want to stay in passive mode. But we want to enable
+        Active mode on boot if the user wants to pair a new controller
+        Use a panel mount momentary button wired to ESP
 
 
 # Other ideas
+    Power supply
+        Instead of being on main board, should be a separate unit that exposes a few cables for each components to use.
+        PS would sit on top of battery
+
     GPS
     Camera
     LIDAR
          
-# Current Issues
-    - ps5 board is receiving a lot of ps5 messages per seconds. 
-        try adding log in the arduino lib and test it.  ~/Arduino/libraries/ps5Controller/src/ps5_l2cap.c :ps5_l2cap_data_ind_cback
-
-
-# Pending Design
-    Arm
-        ?? Get 12V servos? Or get a high current step-down?
-            https://www.amazon.ca/Converter-1-2-32V-Adjustable-Voltage-Regulator/dp/B09P485XL7
-        Backhoe with grapple
-        needs 4 servos
-            mg996R:
-                Stall torque: 12kg
-                weight: 60g
-                Amps: 3    <-- cannot use a small buck converter for all servos
-                Voltage: 5v
-
-===========================================================

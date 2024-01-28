@@ -1,4 +1,4 @@
-# A remote controlled vehicle with mechanical arm user ESP32
+# A remote controlled vehicle with a mechanical arm using ESP32 and a PS3 Dualsense controller
 It's heavy, it's noisy, it's klonky and it looks like a rudimentary machine. That's exactly what I wanted to build.
 This is work in progress, so no pictures of the final build yet
 
@@ -58,6 +58,8 @@ The subframe is just a 3cm wide steel bar welded on the rear axle and bolted on 
 The vehicle is separated in 4 sections: The steering, battery mount, main board and mechanical arm.
 There is a series of holes on the subframe that allows me to bolt the battery mount and main board at varying distances.
 
+<p style="text-align: center;"><img src='doc/PXL_20240124_150919179.jpg' width='550'></p>
+
 
 # Steering
 To build a steering, I practiced a few prototypes with Legos. Then I ended up building something like this:
@@ -88,6 +90,18 @@ The goal was to be able to lift a 500ml can of beer.
 - Grapple
     - Servo sitting on the arm
 
+I wanted the feel of the arm to be like a backhoe control. My initial implementation was taking a value from the Dualsense constroller sticks. This value is between -128 and 127 and was mapped to an angle on the betwwen 0 and 90 on the servo.
+This has the affect of using the controller to bring the arm to a set value instead of simply accellerating the arm, like a hydraulic system would. This is a big difference in feel. Also, when releasing the DualSense stick, the servo would return back to its original position. In a hydraulic system, you simply want the arm to stop moving and stay at its current position.
+
+It took a fair amount of code to replicate this behaviour but I'm overall satisfied. It definitely feels more "mechanic" that fluid like a hydraulic system but I think I like it.
+
+The arm can only be used while in "arm" mode. Arm mode is activated/deactivated with the Dualsense cross button.
+While in arm mode, the throttle is disabled and the steering is disable to be able to use the sticks for controlling the arm.
+Another reason, is that it would require too much power to run the 4 motors and the servos at the same time.
+To reduce power usage event more, only 1 servo per sticks can be used at the same time. The 5v regulator that feeds the servo cannot exceed 3A.
+
+
+
 # Metrics
 The machine creates a WAP and has the IP address 192.168.4.1. It sends a UDP packet to 192.168.4.2:242 every second. This packet
 contains the metrics of the machine as defined in [mainboard/main/common.h](mainboard//main/common.h) in `struct metrics_t`
@@ -105,25 +119,21 @@ TODO: top speed, battery life, current draw (if 7.5 fuse does not blow, we're ok
 
 # Improvements
 There are many design flaws with this machine. Mostly because of my limited knowledge about mechanics and electronics, but also because
-of a coucsious choice to sacrifice performance to be able to use limited resources. For example, a few pivot points would gain by being installed on a bearing or ball joint, but this would have become too expensive. I had everything on hand already to build a poorman's version. I like to think of it as working as if in a post-apocalyptic world and scavanging for parts :)
+of a consious choice to sacrifice performance to be able to use limited resources. For example, a few pivot points would gain by being installed on a bearing or ball joint, but this would have become too expensive. I had everything on hand already to build a poorman's version. I like to think of it as working as if in a post-apocalyptic world and scavanging for parts :)
 
 
 # Pictures
 
-Prototype of robotic arm with legos
+Prototype of robotic arm with legos. It's not what I will end up building.
 ![](doc/PXL_20240117_154853416.jpg)
 
 Wiring reference picture
 ![](doc/PXL_20240117_155832882.jpg)
 
- First test for controlling motors
-![](doc/PXL_20240117_220341583.jpg)
-
-
 Project status Jan 17
 ![](doc/PXL_20240120_234724846.jpg)
 
-Guts are wheels mounted
+Guts and wheels mounted
 ![](doc/PXL_20240122_003749379.jpg)
 
 

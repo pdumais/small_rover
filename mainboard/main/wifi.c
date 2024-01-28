@@ -175,6 +175,10 @@ void broadcast_metric(metrics_t *metrics)
     n += sprintf(str + n, "pwm: %i, ", metrics->pwm);
     n += sprintf(str + n, "direction: %i, ", metrics->direction);
     n += sprintf(str + n, "steering_angle: %i, ", metrics->steering_angle);
+    n += sprintf(str + n, "rotator_angle: %hhd ", metrics->angle_rotator);
+    n += sprintf(str + n, "boom_angle: %hhd, ", metrics->angle_boom);
+    n += sprintf(str + n, "arm_angle: %hhd, ", metrics->angle_arm);
+    n += sprintf(str + n, "grapple_angle: %hhd, ", metrics->angle_grapple);
     n += sprintf(str + n, "horn: %i, ", metrics->horn);
     n += sprintf(str + n, "rpm1: %i, ", metrics->rpm1);
     n += sprintf(str + n, "rpm2: %i, ", metrics->rpm2);
