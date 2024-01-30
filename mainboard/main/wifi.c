@@ -197,3 +197,12 @@ void broadcast_metric(metrics_t *metrics)
     {
     }
 }
+
+void broadcast_log(const char *str)
+{
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(242);
+    addr.sin_addr.s_addr = inet_addr("192.168.4.2");
+    int err = sendto(sock, str, strlen(str), 0, (struct sockaddr *)&addr, sizeof(addr));
+}

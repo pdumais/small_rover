@@ -20,6 +20,7 @@
 #include <memory.h>
 #include "servo.h"
 #include "arm.h"
+#include "routerecorder.h"
 
 ESP_EVENT_DEFINE_BASE(GPIO_EVENT);
 #define I2C_SLAVE_NUM 0
@@ -37,6 +38,8 @@ ESP_EVENT_DEFINE_BASE(GPIO_EVENT);
 #define STATE_CONTROLLER_CONNECTED 4
 #define STATE_BIT_R3 5
 #define STATE_BIT_CROSS 6
+#define STATE_BIT_RECORD 7
+#define STATE_BIT_REPLAY 8
 
 typedef struct
 {
@@ -102,10 +105,8 @@ static mcpwm_cmpr_handle_t comparator_steering;
 	p[21].g = 255;            \
 	led_set_rotating_pattern(&p, 200)
 
-void process_steering(int8_t axis)
+void process_steering(int angle)
 {
-	// we want an angle between -31 to 32 and we have a number from -127 to 128
-	int angle = axis >> 2;
 	metrics.steering_angle = angle;
 	servo_set_angle(&comparator_steering, angle);
 }
@@ -332,9 +333,11 @@ void process_state(ps5_t *data)
 
 	bool pressing_cross = (data->button.cross != 0);
 	bool controller_connected = data->controller_connected;
-	bool pressing_led = (data->button.triangle != 0);
+	bool pressing_led = (data->button.l1 != 0);
 	bool pressing_r3 = (data->button.r3 != 0);
-	bool pressing_horn = (data->button.circle != 0);
+	bool pressing_horn = (data->button.r1 != 0);
+	bool pressing_record = (data->button.circle != 0);
+	bool pressing_replay = (data->button.triangle != 0);
 
 	bool reverse = 0;
 	bool fwd = 0;
@@ -352,6 +355,8 @@ void process_state(ps5_t *data)
 
 	uint32_t new_state = (pressing_horn << STATE_BIT_HORN) |
 						 (pressing_r3 << STATE_BIT_R3) |
+						 (pressing_record << STATE_BIT_RECORD) |
+						 (pressing_replay << STATE_BIT_REPLAY) |
 						 (pressing_cross << STATE_BIT_CROSS) |
 						 (reverse << STATE_BIT_REVERSE) |
 						 (fwd << STATE_BIT_FWD) |
@@ -360,6 +365,17 @@ void process_state(ps5_t *data)
 
 	ESP_LOGI(TAG, "Current state: %lu, new state: %lu", current_state, new_state);
 	metrics.controller_battery = data->status.battery;
+
+	if (is_now(current_state, new_state, STATE_BIT_RECORD))
+	{
+		record_toggle_record();
+	}
+
+	if (is_now(current_state, new_state, STATE_BIT_REPLAY))
+	{
+		// TODO: should disable throttle?
+		record_toggle_replay();
+	}
 
 	if (is_now(current_state, new_state, STATE_BIT_CROSS))
 	{
@@ -375,9 +391,14 @@ void process_state(ps5_t *data)
 	}
 	else
 	{
+		// we want an angle between -31 to 32 and we have a number from -127 to 128
+		int angle = data->analog.stick.rx >> 2;
+
 		process_throttle(fwd ? data->analog.button.r2 : data->analog.button.l2, fwd);
-		process_steering(data->analog.stick.rx);
+		process_steering(angle);
 	}
+
+	record_process(&metrics);
 
 	if (current_state == new_state)
 	{
@@ -597,6 +618,8 @@ void dwn_gpio_init()
 	led_set_rotating_pattern(&p, 200); // to show a "disconnected" mode
 
 	servo_start();
+
+	record_init();
 	// Using a task scheduler would be more appropriate here to be able to set priorities
 	xTaskCreate(check_rpm, "check_rpm", 4096, NULL, 5, &rpm_task);
 	xTaskCreate(poll_ps5, "poll_ps5", 4096, NULL, 5, &ps5_task);

@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include <stdbool.h>
 
 #define WIFI_STATE_NONE 0
 #define WIFI_STATE_AP 1
@@ -8,3 +9,4 @@
 
 bool wifi_init();
 void broadcast_metric(metrics_t *m);
+void broadcast_log(const char *str);

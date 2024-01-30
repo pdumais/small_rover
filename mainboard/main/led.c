@@ -63,9 +63,16 @@ void led_turnoff()
     led_set_led(0, 0, 0, 0);
 }
 
+#define BRIGHTNESS_SHIFT 2
+
 void led_set_rotating_pattern(led_pattern *p, uint32_t delay)
 {
-    memcpy(&current_pattern, p, sizeof(led_pattern));
+    for (int i = 0; i < LED_COUNT; i++)
+    {
+        current_pattern[i].r = (*p)[i].r >> BRIGHTNESS_SHIFT;
+        current_pattern[i].g = (*p)[i].g >> BRIGHTNESS_SHIFT;
+        current_pattern[i].b = (*p)[i].b >> BRIGHTNESS_SHIFT;
+    }
 
     q_msg msg;
     msg.command = COMMAND_ROTATING_PATTERN;
@@ -75,7 +82,12 @@ void led_set_rotating_pattern(led_pattern *p, uint32_t delay)
 
 void led_set_flashing_pattern(led_pattern *p, uint32_t on, uint32_t off)
 {
-    memcpy(&current_pattern, p, sizeof(led_pattern));
+    for (int i = 0; i < LED_COUNT; i++)
+    {
+        current_pattern[i].r = (*p)[i].r >> BRIGHTNESS_SHIFT;
+        current_pattern[i].g = (*p)[i].g >> BRIGHTNESS_SHIFT;
+        current_pattern[i].b = (*p)[i].b >> BRIGHTNESS_SHIFT;
+    }
 
     q_msg msg;
     msg.command = COMMAND_FLASHING_PATTERN;

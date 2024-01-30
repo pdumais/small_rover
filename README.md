@@ -112,10 +112,20 @@ The router then forwards UDP 242 to my dev machine so I can receive stats broadc
 
 From my dev machine, I can also trigger a OTA firmware upgrade so I don't need to connect the vehicle with a USB cable anymore.
 
+# Recording
+The vehicle can learn routes by recording user inputs while controlling with the dualsense.
+The Circle button enters the machine into recording mode. It starts recording all throttle changes and steering angle changes as the user operates the machine. Pressing the triangle button replays a recording. 
 
+By replaying the same throttle values and steering angle at the same time deltas, the machine should be able to replicate the same path that was recorded but it needs to be placed at the same starting position than the recording was made at.
 
-# Results
-TODO: top speed, battery life, current draw (if 7.5 fuse does not blow, we're ok)
+I was initially thinking of using a digital magnetometer but I don't think it would give me
+much more precision than what I currently get. A GPS would be great, but won't work indoor and the accuracy would be lower (1.5m margin of error I believe).
+
+In practice, the replay is not 100% accurate because I suspect that the tires slip on the floor in a different way each time. There is also a margin of error in the timing. The results are quite good still, but the machine doesn't come back exactly where it was all the time, but quite close.
+
+[![Rover](https://img.youtube.com/vi/QwFZJzM8oCE/0.jpg)](https://www.youtube.com/watch?v=QwFZJzM8oCE)
+
+The record buffer is a bit small too. It can hold up to 300 events and then recording stops. I am planning on flushing the buffer to flash when it is full and be able to record at least 1000 events.
 
 # Improvements
 There are many design flaws with this machine. Mostly because of my limited knowledge about mechanics and electronics, but also because

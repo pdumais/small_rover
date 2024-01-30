@@ -1,25 +1,14 @@
 # currently working on:
-    Waiting for Battery. Final test
-    
     Arm
-        Make rotating base 
+        Make arm
+        make Claw
 
 
 
 # Tasks
-    Arm
-        Order servos
-        make a top shelf over the battery and main board to put stuff in.
-        make rotating platform
-            make a 3.5" circle and weld on lazy suzan
-                constrain build to that platform
-        make boom
-        make arm
-        Make claw
-
-        servo control with PS5 controller
-            controller value does not set the angle, it sets a speed at which we increase the angle
-                i.e: if value 127, then increase the angle by 1 every second. If 64, increase by 0.5 every second
+    Route recording
+        record buffer is small. After the buffer is full, we should flush to flash
+        set led status when recording or replaying
 
     PCB for mainboard
         4 DRV8871
@@ -27,9 +16,15 @@
         terminal headers
 
     Deep sleep
+        Does not work properly.
         Will servos use any current?
         LEDs are still lit on both boards
 
+    Obstacle detection  
+        Use lidar ?
+
+    got to beacon
+        would need to avoid obstacles
 
     PS5 controller
         when booting while pressing a button, try to pair with a controller for 10s, within the main thread.
@@ -37,13 +32,7 @@
         Active mode on boot if the user wants to pair a new controller
         Use a panel mount momentary button wired to ESP
 
-
-# Other ideas
     Power supply
         Instead of being on main board, should be a separate unit that exposes a few cables for each components to use.
         PS would sit on top of battery
 
-    GPS
-    Camera
-    LIDAR
-         
