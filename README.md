@@ -1,11 +1,10 @@
-# A remote controlled vehicle with a mechanical arm using ESP32 and a PS3 Dualsense controller
+# A remote controlled vehicle with a mechanical arm using ESP32 and a PS5 Dualsense controller
 It's heavy, it's noisy, it's klonky and it looks like a rudimentary machine. That's exactly what I wanted to build.
 This is work in progress, so no pictures of the final build yet
 
-![](doc/PXL_20240122_003757384.jpg)
 
 
-[![Rover](https://img.youtube.com/vi/n-CMO8BS5-k/0.jpg)](https://www.youtube.com/watch?v=n-CMO8BS5-k)
+[![Rover](https://img.youtube.com/vi/R3Qs6OE4Az8/0.jpg)](https://youtu.be/R3Qs6OE4Az8)
 
 
 # Electronics

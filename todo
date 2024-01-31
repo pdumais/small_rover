@@ -1,14 +1,10 @@
 # currently working on:
     Arm
-        Make arm
         make Claw
-
+        Add servo to rotate claw?
 
 
 # Tasks
-    Route recording
-        record buffer is small. After the buffer is full, we should flush to flash
-        set led status when recording or replaying
 
     PCB for mainboard
         4 DRV8871
@@ -21,16 +17,16 @@
         LEDs are still lit on both boards
 
     Obstacle detection  
-        Use lidar ?
-
-    got to beacon
-        would need to avoid obstacles
+        dualsense rumble when obstacle. or feedback on the throttle button
+            unfortunately, the dualsense library I'm using does not work when trying to send commands towards the controller. https://github.com/rodneybakiskan/ps5-esp32/issues/3
+            Is it easy to fix?
+        Use IR range finder. Extend steering servo horn so that sensor rotates with steering
 
     PS5 controller
-        when booting while pressing a button, try to pair with a controller for 10s, within the main thread.
-        because if the controller is not paired, we need to pair it. And this can only be done if we use ps5_l2cap_reconnect() (active mode). We have stopped invoking this because it seems to conflict when listening for an incomming connection (passive). We want to stay in passive mode. But we want to enable
-        Active mode on boot if the user wants to pair a new controller
-        Use a panel mount momentary button wired to ESP
+        Use a panel mount momentary button wired to ESP pin 18 to initiate pairing. It is already implemented, just need the button
+
+    Route recording
+        record buffer is small. After the buffer is full, we should flush to flash
 
     Power supply
         Instead of being on main board, should be a separate unit that exposes a few cables for each components to use.

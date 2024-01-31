@@ -77,7 +77,7 @@ void start_ota_upgrade()
 
     led_pattern p = LED_COLORFUL;
 
-    led_set_rotating_pattern(&p, 50);
+    led_set_rotating_pattern(&p, 50, 6);
 
     esp_http_client_config_t config = {0};
     config.url = "http://192.168.4.2:8114/rover.bin";

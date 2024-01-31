@@ -145,6 +145,15 @@ bool ps5_isConnected()
   return connected;
 }
 
+void ps5_try_pairing()
+{
+  while (!ps5IsConnected())
+  {
+    ps5_l2cap_reconnect();
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+}
+
 void ps5_setLed(uint8_t r, uint8_t g, uint8_t b)
 {
   _output.r = r;

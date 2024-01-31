@@ -17,6 +17,7 @@
 
 #define DUALSENSE_MAC "D0:BC:C1:EC:AD:AC"
 #define GPIO_CTRL_LED 5
+#define GPIO_PAIR 18
 #define GPIO_SLEEP_BUTTON GPIO_NUM_4
 
 #define I2C_MASTER_NUM 0
@@ -136,7 +137,6 @@ void ps5_check(void *arg)
         if (has_changes)
         {
             ESP_LOGI(TAG, "PS5 Event");
-
             memcpy(&old_data, data, sizeof(ps5_t));
             old_data.latestPacket = true;
             old_data.controller_connected = true;
@@ -190,6 +190,14 @@ void app_main(void)
 
     init_deep_sleep(GPIO_SLEEP_BUTTON, on_start_sleep);
 
+    gpio_config_t i_conf = {};
+    i_conf.pin_bit_mask = 0;
+    i_conf.pin_bit_mask |= (1ULL << GPIO_PAIR);
+    i_conf.intr_type = GPIO_INTR_DISABLE;
+    i_conf.mode = GPIO_MODE_INPUT;
+    i_conf.pull_up_en = 1;
+    gpio_config(&i_conf);
+
     gpio_config_t o_conf = {};
     o_conf.pin_bit_mask |= (1ULL << GPIO_CTRL_LED);
     o_conf.intr_type = GPIO_INTR_DISABLE;
@@ -202,6 +210,12 @@ void app_main(void)
     ps5_begin(DUALSENSE_MAC);
     /* Initialize the event loop */
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    if (gpio_get_level(GPIO_PAIR) == 0)
+    {
+        ESP_LOGI(TAG, "Waiting to pair");
+        ps5_try_pairing();
+    }
 
     xTaskCreate(ps5_check, "ps5_check", 4096, NULL, 5, NULL);
 }

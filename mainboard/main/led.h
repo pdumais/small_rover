@@ -30,12 +30,64 @@ struct led_pattern_t
 typedef struct led_pattern_t led_pattern[LED_COUNT];
 
 void led_init();
-void led_set_led(uint8_t index, uint8_t r, uint8_t g, uint8_t b);
-void led_set_steady_pattern(led_pattern *p);
-void led_set_flashing_pattern(led_pattern *p, uint32_t on, uint32_t off);
-void led_set_rotating_pattern(led_pattern *p, uint32_t delay);
+void led_set_led(uint8_t index, uint8_t r, uint8_t g, uint8_t b, uint8_t brightness);
+void led_set_steady_pattern(led_pattern *p, uint8_t brightness);
+void led_set_flashing_pattern(led_pattern *p, uint32_t on, uint32_t off, uint8_t brightness);
+void led_set_rotating_pattern(led_pattern *p, uint32_t delay, uint8_t brightness);
 void led_turnoff();
 
 extern const led_pattern led_pattern_rainbow;
 extern const led_pattern led_pattern_red;
 extern const led_pattern led_pattern_blue;
+
+#define LED_SET_DISCONNECTED_PATTERN() \
+    led_pattern p = {0};               \
+    p[0].r = 255;                      \
+    led_set_rotating_pattern(&p, 200, 1)
+
+#define LED_SET_IDLE_PATTERN() led_set_rotating_pattern(&led_pattern_rainbow, 100, 6)
+#define LED_SET_REVERSE_PATTERN() led_set_flashing_pattern(&led_pattern_red, 100, 100, 6)
+#define LED_SET_ATTENTION_PATTERN()       \
+    led_pattern p;                        \
+    memset(&p, 255, sizeof(led_pattern)); \
+    led_set_flashing_pattern(&p, 100, 50, 1)
+
+#define LED_SET_GOING_TO_SLEEP_PATTERN() \
+    led_pattern p = {0};                 \
+    p[0].b = 255;                        \
+    p[7].b = 255;                        \
+    p[13].b = 255;                       \
+    p[21].b = 255;                       \
+    led_set_rotating_pattern(&p, 1000, 4)
+
+#define LED_SET_ARM_PATTERN() \
+    led_pattern p = {0};      \
+    p[0].b = 255;             \
+    p[7].b = 255;             \
+    p[13].b = 255;            \
+    p[21].b = 255;            \
+    p[0].g = 255;             \
+    p[7].g = 255;             \
+    p[13].g = 255;            \
+    p[21].g = 255;            \
+    led_set_rotating_pattern(&p, 200, 6)
+
+#define LED_SET_RECORDING_PATTERN() \
+    led_pattern p = {0};            \
+    p[0].r = 255;                   \
+    p[7].r = 255;                   \
+    p[13].r = 255;                  \
+    p[21].r = 255;                  \
+    p[0].g = 128;                   \
+    p[7].g = 128;                   \
+    p[13].g = 128;                  \
+    p[21].g = 128;                  \
+    led_set_rotating_pattern(&p, 200, 4)
+
+#define LED_SET_REPLAY_PATTERN() \
+    led_pattern p = {0};         \
+    p[0].g = 255;                \
+    p[7].g = 255;                \
+    p[13].g = 255;               \
+    p[21].g = 255;               \
+    led_set_rotating_pattern(&p, 200, 4)

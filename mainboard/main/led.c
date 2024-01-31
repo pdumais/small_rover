@@ -36,22 +36,27 @@ const led_pattern led_pattern_rainbow = RAINBOW;
 const led_pattern led_pattern_red = LED_COLOR_RED;
 const led_pattern led_pattern_blue = LED_COLOR_BLUE;
 
-void led_set_led(uint8_t index, uint8_t r, uint8_t g, uint8_t b)
+void led_set_led(uint8_t index, uint8_t r, uint8_t g, uint8_t b, uint8_t brightness)
 {
     q_msg msg;
     msg.command = COMMAND_STEADY_PATTERN;
 
     memset(&current_pattern, 0, sizeof(led_pattern));
-    current_pattern[index].r = r;
-    current_pattern[index].g = g;
-    current_pattern[index].b = b;
+    current_pattern[index].r = r / brightness;
+    current_pattern[index].g = g / brightness;
+    current_pattern[index].b = b / brightness;
 
     xQueueSend(xQueue, (void *)&msg, 0);
 }
 
-void led_set_steady_pattern(led_pattern *p)
+void led_set_steady_pattern(led_pattern *p, uint8_t brightness)
 {
-    memcpy(&current_pattern, p, sizeof(led_pattern));
+    for (int i = 0; i < LED_COUNT; i++)
+    {
+        current_pattern[i].r = (*p)[i].r / brightness;
+        current_pattern[i].g = (*p)[i].g / brightness;
+        current_pattern[i].b = (*p)[i].b / brightness;
+    }
 
     q_msg msg;
     msg.command = COMMAND_STEADY_PATTERN;
@@ -60,18 +65,16 @@ void led_set_steady_pattern(led_pattern *p)
 
 void led_turnoff()
 {
-    led_set_led(0, 0, 0, 0);
+    led_set_led(0, 0, 0, 0, 1);
 }
 
-#define BRIGHTNESS_SHIFT 2
-
-void led_set_rotating_pattern(led_pattern *p, uint32_t delay)
+void led_set_rotating_pattern(led_pattern *p, uint32_t delay, uint8_t brightness)
 {
     for (int i = 0; i < LED_COUNT; i++)
     {
-        current_pattern[i].r = (*p)[i].r >> BRIGHTNESS_SHIFT;
-        current_pattern[i].g = (*p)[i].g >> BRIGHTNESS_SHIFT;
-        current_pattern[i].b = (*p)[i].b >> BRIGHTNESS_SHIFT;
+        current_pattern[i].r = (*p)[i].r / brightness;
+        current_pattern[i].g = (*p)[i].g / brightness;
+        current_pattern[i].b = (*p)[i].b / brightness;
     }
 
     q_msg msg;
@@ -80,13 +83,13 @@ void led_set_rotating_pattern(led_pattern *p, uint32_t delay)
     xQueueSend(xQueue, (void *)&msg, 0);
 }
 
-void led_set_flashing_pattern(led_pattern *p, uint32_t on, uint32_t off)
+void led_set_flashing_pattern(led_pattern *p, uint32_t on, uint32_t off, uint8_t brightness)
 {
     for (int i = 0; i < LED_COUNT; i++)
     {
-        current_pattern[i].r = (*p)[i].r >> BRIGHTNESS_SHIFT;
-        current_pattern[i].g = (*p)[i].g >> BRIGHTNESS_SHIFT;
-        current_pattern[i].b = (*p)[i].b >> BRIGHTNESS_SHIFT;
+        current_pattern[i].r = (*p)[i].r / brightness;
+        current_pattern[i].g = (*p)[i].g / brightness;
+        current_pattern[i].b = (*p)[i].b / brightness;
     }
 
     q_msg msg;
@@ -183,9 +186,6 @@ void led_init()
         .flags.with_dma = false,
     };
     ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip));
-
-    // Setup initial LED pattern
-    led_set_steady_pattern(&led_pattern_rainbow);
 
     xTaskCreate(led_task, "led_task", 4096, NULL, 5, NULL);
 }

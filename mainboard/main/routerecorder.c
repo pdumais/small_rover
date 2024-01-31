@@ -69,6 +69,16 @@ void replay_task(void *arg)
     }
 }
 
+bool record_is_recording()
+{
+    return recording;
+}
+
+bool record_is_replaying()
+{
+    return replaying;
+}
+
 void record_init()
 {
     ESP_LOGI(TAG, "Recorder buffer size=%i bytes", sizeof(route));

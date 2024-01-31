@@ -60,6 +60,14 @@ static uint16_t *throttle_map;
 static TaskHandle_t ps5_task;
 static TaskHandle_t rpm_task;
 
+typedef void (*state_processor_callback_t)(ps5_t *data, uint32_t old_state, uint32_t new_state);
+static state_processor_callback_t state_processor_callback;
+void process_state_during_driving_mode(ps5_t *data, uint32_t old_state, uint32_t new_state);
+void process_state_during_recording_mode(ps5_t *data, uint32_t old_state, uint32_t new_state;);
+void process_state_during_replaying_mode(ps5_t *data, uint32_t old_state, uint32_t new_state);
+void process_state_during_arm_mode(ps5_t *data, uint32_t old_state, uint32_t new_state);
+void process_state_during_disconnected_mode(ps5_t *data, uint32_t old_state, uint32_t new_state);
+
 metrics_t metrics = {0};
 
 static const char *TAG = "gpio_c";
@@ -67,43 +75,30 @@ static bool arm_activated = false;
 
 static mcpwm_cmpr_handle_t comparator_steering;
 
-#define LED_SET_DISCONNECTED_PATTERN() \
-	led_pattern p = {0};               \
-	p[0].r = 255;                      \
-	led_set_rotating_pattern(&p, 200)
+bool is_going_reverse(ps5_t *data)
+{
+	// We don't support braking for now (setting both directions high)
+	// We should though. But setting both pins to 1 instead of PWM
+	if (data->analog.button.r2)
+	{
+		return false;
+	}
+	else if (data->analog.button.l2)
+	{
+		return true;
+	}
 
-#define LED_SET_IDLE_PATTERN() led_set_rotating_pattern(&led_pattern_rainbow, 100)
-#define LED_SET_REVERSE_PATTERN() led_set_flashing_pattern(&led_pattern_red, 100, 100)
-#define LED_SET_ATTENTION_PATTERN()        \
-	led_pattern p;                         \
-	memset(&p, 255, sizeof(led_pattern));  \
-	led_set_flashing_pattern(&p, 100, 50); \
-	led_set_flashing_pattern(&led_pattern_red, 100, 100)
+	return false;
+}
 
-#define LED_SET_ATTENTION_PATTERN()       \
-	led_pattern p;                        \
-	memset(&p, 255, sizeof(led_pattern)); \
-	led_set_flashing_pattern(&p, 100, 50)
-
-#define LED_SET_GOING_TO_SLEEP_PATTERN() \
-	led_pattern p = {0};                 \
-	p[0].b = 255;                        \
-	p[7].b = 255;                        \
-	p[13].b = 255;                       \
-	p[21].b = 255;                       \
-	led_set_rotating_pattern(&p, 1000)
-
-#define LED_SET_ARM_PATTERN() \
-	led_pattern p = {0};      \
-	p[0].b = 255;             \
-	p[7].b = 255;             \
-	p[13].b = 255;            \
-	p[21].b = 255;            \
-	p[0].g = 255;             \
-	p[7].g = 255;             \
-	p[13].g = 255;            \
-	p[21].g = 255;            \
-	led_set_rotating_pattern(&p, 200)
+bool is_going_forward(ps5_t *data)
+{
+	if (data->analog.button.r2)
+	{
+		return true;
+	}
+	return false;
+}
 
 void process_steering(int angle)
 {
@@ -205,11 +200,18 @@ static bool is(uint32_t new_state, uint32_t bit)
 	return (new_state & (1 << bit));
 }
 
+/*
 void update_led(uint32_t old_state, uint32_t new_state)
 {
+
 	if (!is(new_state, STATE_CONTROLLER_CONNECTED))
 	{
 		LED_SET_DISCONNECTED_PATTERN();
+		return;
+	}
+
+	if (record_is_recording() || record_is_replaying())
+	{
 		return;
 	}
 
@@ -325,10 +327,305 @@ void update_buzzer(uint32_t old_state, uint32_t new_state)
 		return;
 	}
 }
+*/
 
-// Dumb state machine
+void on_enter_disconnected_mode()
+{
+	metrics.horn = 0;
+	buzzer_set_off();
+	LED_SET_DISCONNECTED_PATTERN();
+	state_processor_callback = &process_state_during_disconnected_mode;
+}
+
+void on_exit_disconnected_mode()
+{
+}
+
+void on_enter_arm_mode()
+{
+	LED_SET_ARM_PATTERN();
+	state_processor_callback = &process_state_during_arm_mode;
+	process_throttle(0, 0); // Stop moving
+	arm_activated = true;
+	arm_enable(arm_activated);
+}
+
+void on_exit_arm_mode()
+{
+	arm_activated = false;
+	arm_enable(arm_activated);
+}
+
+void on_enter_record_mode()
+{
+	metrics.horn = 0;
+	buzzer_set_off();
+	LED_SET_RECORDING_PATTERN();
+	state_processor_callback = &process_state_during_recording_mode;
+}
+
+void on_exit_record_mode()
+{
+}
+
+void on_enter_replay_mode()
+{
+	metrics.horn = 0;
+	buzzer_set_off();
+	LED_SET_REPLAY_PATTERN();
+	state_processor_callback = &process_state_during_replaying_mode;
+}
+
+void on_exit_replay_mode()
+{
+}
+
+void on_enter_driving_mode()
+{
+	metrics.horn = 0;
+	buzzer_set_off();
+	metrics.horn = 0;
+	buzzer_set_off();
+	LED_SET_IDLE_PATTERN();
+
+	state_processor_callback = &process_state_during_driving_mode;
+}
+
+void on_exit_driving_mode()
+{
+}
+
+void process_state_during_disconnected_mode(ps5_t *data, uint32_t old_state, uint32_t new_state)
+{
+	if (!data)
+	{
+		// This state does not need to do periodic checks
+		return;
+	}
+
+	if (is(new_state, STATE_CONTROLLER_CONNECTED))
+	{
+		on_exit_disconnected_mode();
+		on_enter_driving_mode();
+		return;
+	}
+}
+
+void process_state_during_driving_mode(ps5_t *data, uint32_t current_state, uint32_t new_state)
+{
+	if (!data)
+	{
+		// This state does not need to do periodic checks
+		return;
+	}
+	// Entering "record" mode
+	if (is_now(current_state, new_state, STATE_BIT_RECORD))
+	{
+		record_toggle_record();
+		if (record_is_recording())
+		{
+			on_exit_driving_mode();
+			on_enter_record_mode();
+			return;
+		}
+	}
+
+	// Entering "replay" mode
+	if (is_now(current_state, new_state, STATE_BIT_REPLAY))
+	{
+		record_toggle_replay();
+		if (record_is_replaying())
+		{
+			on_exit_driving_mode();
+			on_enter_replay_mode();
+			return;
+		}
+	}
+
+	// Entering "arm" mode
+	if (is_now(current_state, new_state, STATE_BIT_CROSS))
+	{
+		on_exit_driving_mode();
+		on_enter_arm_mode();
+		return;
+	}
+
+	if (is_now(current_state, new_state, STATE_BIT_R3)) // Toggle between fast/slow throttle
+	{
+		if (throttle_map == throttle_map_high)
+		{
+			throttle_map = throttle_map_low;
+		}
+		else
+		{
+
+			throttle_map = throttle_map_high;
+		}
+	}
+
+	if (is_now(current_state, new_state, STATE_BIT_HORN))
+	{
+		// only do this after the transition
+		metrics.horn = 1;
+		buzzer_set_intermitent(100, 100); // Anything below 100 should probably use the hardware PWM instead
+	}
+	else if (was(current_state, new_state, STATE_BIT_HORN))
+	{
+		metrics.horn = 0;
+		if (is(new_state, STATE_BIT_REVERSE))
+		{
+			buzzer_set_intermitent(1000, 500);
+		}
+		else
+		{
+			buzzer_set_off();
+		}
+	}
+
+	if (is_now(current_state, new_state, STATE_BIT_LED))
+	{
+		LED_SET_ATTENTION_PATTERN();
+	}
+	else if (was(current_state, new_state, STATE_BIT_LED))
+	{
+		if (is(new_state, STATE_BIT_REVERSE))
+		{
+			LED_SET_REVERSE_PATTERN();
+		}
+		else
+		{
+			LED_SET_IDLE_PATTERN();
+		}
+	}
+
+	if (is_now(current_state, new_state, STATE_BIT_REVERSE))
+	{
+		if (!is(new_state, STATE_BIT_LED))
+		{
+			LED_SET_REVERSE_PATTERN();
+		}
+		if (!is(new_state, STATE_BIT_HORN))
+		{
+			buzzer_set_intermitent(1000, 500);
+		}
+	}
+	else if (was(current_state, new_state, STATE_BIT_REVERSE))
+	{
+		if (is(new_state, STATE_BIT_HORN))
+		{
+			// Don't do anything, because horn is already overriding the reverse chime
+		}
+		else
+		{
+			buzzer_set_off();
+		}
+
+		if (is(new_state, STATE_BIT_LED))
+		{
+			// Don't do anything, because horn is already overriding the reverse chime
+		}
+		else
+		{
+			LED_SET_IDLE_PATTERN();
+		}
+	}
+
+	// we want an angle between -31 to 32 and we have a number from -127 to 128
+	int angle = data->analog.stick.lx >> 2;
+	bool reverse = is_going_reverse(data);
+	process_throttle(reverse ? data->analog.button.l2 : data->analog.button.r2, !reverse);
+	process_steering(angle);
+}
+
+void process_state_during_recording_mode(ps5_t *data, uint32_t current_state, uint32_t new_state)
+{
+	if (!data)
+	{
+		// This state does not need to do periodic checks
+		return;
+	}
+	if (is_now(current_state, new_state, STATE_BIT_RECORD))
+	{
+		record_toggle_record();
+		if (!record_is_recording())
+		{
+			// TODO: we can also exit record mode after buffer is full
+			on_exit_record_mode();
+			on_enter_driving_mode();
+			return;
+		}
+	}
+
+	// we want an angle between -31 to 32 and we have a number from -127 to 128
+	int angle = data->analog.stick.lx >> 2;
+	bool reverse = is_going_reverse(data);
+	process_throttle(reverse ? data->analog.button.l2 : data->analog.button.r2, !reverse);
+	process_steering(angle);
+
+	record_process(&metrics);
+
+	// Check if still recording. It's possible it was terminated because the buffer was full
+	if (!record_is_recording())
+	{
+		on_exit_record_mode();
+		on_enter_driving_mode();
+		return;
+	}
+}
+
+void process_state_during_replaying_mode(ps5_t *data, uint32_t current_state, uint32_t new_state)
+{
+	if (!data)
+	{
+		// Periodic check to see if we're still replaying
+		if (!record_is_replaying())
+		{
+			on_exit_replay_mode();
+			on_enter_driving_mode();
+		}
+		return;
+	}
+
+	// Stop replaying
+	if (is_now(current_state, new_state, STATE_BIT_REPLAY))
+	{
+		record_toggle_replay();
+		if (!record_is_replaying())
+		{
+			on_exit_replay_mode();
+			on_enter_driving_mode();
+			return;
+		}
+	}
+}
+
+void process_state_during_arm_mode(ps5_t *data, uint32_t current_state, uint32_t new_state)
+{
+	if (!data)
+	{
+		// This state does not need to do periodic checks
+		return;
+	}
+
+	// Exit "arm" mode
+	if (is_now(current_state, new_state, STATE_BIT_CROSS))
+	{
+		on_exit_arm_mode();
+		on_enter_driving_mode();
+		return;
+	}
+
+	arm_move(data->analog.stick.lx, data->analog.stick.ly, data->analog.stick.rx, data->analog.stick.ry);
+}
+
 void process_state(ps5_t *data)
 {
+	if (data == 0)
+	{
+		state_processor_callback(0, 0, 0);
+		return;
+	}
+
 	static uint32_t current_state = 0;
 
 	bool pressing_cross = (data->button.cross != 0);
@@ -338,20 +635,8 @@ void process_state(ps5_t *data)
 	bool pressing_horn = (data->button.r1 != 0);
 	bool pressing_record = (data->button.circle != 0);
 	bool pressing_replay = (data->button.triangle != 0);
-
-	bool reverse = 0;
-	bool fwd = 0;
-
-	// We don't support braking for now (setting both directions high)
-	// We should though. But setting both pins to 1 instead of PWM
-	if (data->analog.button.r2)
-	{
-		fwd = 1;
-	}
-	else if (data->analog.button.l2)
-	{
-		reverse = 1;
-	}
+	bool reverse = is_going_reverse(data);
+	bool fwd = is_going_forward(data);
 
 	uint32_t new_state = (pressing_horn << STATE_BIT_HORN) |
 						 (pressing_r3 << STATE_BIT_R3) |
@@ -366,61 +651,7 @@ void process_state(ps5_t *data)
 	ESP_LOGI(TAG, "Current state: %lu, new state: %lu", current_state, new_state);
 	metrics.controller_battery = data->status.battery;
 
-	if (is_now(current_state, new_state, STATE_BIT_RECORD))
-	{
-		record_toggle_record();
-	}
-
-	if (is_now(current_state, new_state, STATE_BIT_REPLAY))
-	{
-		// TODO: should disable throttle?
-		record_toggle_replay();
-	}
-
-	if (is_now(current_state, new_state, STATE_BIT_CROSS))
-	{
-		arm_activated = !arm_activated;
-		arm_enable(arm_activated);
-	}
-
-	// TODO: pressing L2 or R2 while in arm mode will change the LED and Buzzer. It should not Should make a better FSM
-	if (arm_activated)
-	{
-		process_throttle(0, 0);
-		arm_move(data->analog.stick.lx, data->analog.stick.ly, data->analog.stick.rx, data->analog.stick.ry);
-	}
-	else
-	{
-		// we want an angle between -31 to 32 and we have a number from -127 to 128
-		int angle = data->analog.stick.rx >> 2;
-
-		process_throttle(fwd ? data->analog.button.r2 : data->analog.button.l2, fwd);
-		process_steering(angle);
-	}
-
-	record_process(&metrics);
-
-	if (current_state == new_state)
-	{
-		return;
-	}
-
-	update_led(current_state, new_state);
-	update_buzzer(current_state, new_state);
-
-	if (is_now(current_state, new_state, STATE_BIT_R3))
-	{
-		if (throttle_map == throttle_map_high)
-		{
-			throttle_map = throttle_map_low;
-		}
-		else
-		{
-
-			throttle_map = throttle_map_high;
-		}
-	}
-
+	state_processor_callback(data, current_state, new_state);
 	current_state = new_state;
 }
 
@@ -463,14 +694,18 @@ void poll_ps5(void *arg)
 			}
 
 			uint8_t *d = &data;
-			ESP_LOGI(TAG, "===========%i, %i, %i, %i, %i", (int8_t)d[0], (int8_t)d[1], (int8_t)d[2], (int8_t)d[3], d[sizeof(ps5_t) - 1]);
+			// ESP_LOGI(TAG, "===========%i, %i, %i, %i, %i", (int8_t)d[0], (int8_t)d[1], (int8_t)d[2], (int8_t)d[3], d[sizeof(ps5_t) - 1]);
 			if (data.latestPacket)
 			{
 				ESP_LOGI(TAG, "New PS5 Packet. Throttle=%i", data.analog.button.r2);
 				// ESP_LOGI(TAG, "New PS5 Packet. l1=%i", data.button.l1);
 				process_state(&data);
+				continue;
 			}
 		}
+
+		// We call process_state with 0 just so that we give a chance to the current state to periodically check other things
+		process_state(0);
 	}
 }
 
@@ -613,13 +848,11 @@ void dwn_gpio_init()
 	pcnt_motor_init(&motor3_pcnt, MOTOR3SENSOR1, MOTOR3SENSOR2);
 	pcnt_motor_init(&motor4_pcnt, MOTOR4SENSOR1, MOTOR4SENSOR2);
 
-	led_pattern p = {0};
-	p[0].r = 255;
-	led_set_rotating_pattern(&p, 200); // to show a "disconnected" mode
-
 	servo_start();
 
 	record_init();
+
+	on_enter_disconnected_mode();
 	// Using a task scheduler would be more appropriate here to be able to set priorities
 	xTaskCreate(check_rpm, "check_rpm", 4096, NULL, 5, &rpm_task);
 	xTaskCreate(poll_ps5, "poll_ps5", 4096, NULL, 5, &ps5_task);
