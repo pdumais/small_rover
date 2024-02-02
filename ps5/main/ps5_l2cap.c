@@ -12,9 +12,7 @@
 #include "l2c_api.h"
 #include "allocator.h"
 
-#define  ps5_TAG "ps5_L2CAP"
-
-
+#define ps5_TAG "ps5_L2CAP"
 
 /********************************************************************************/
 /*              L O C A L    F U N C T I O N     P R O T O T Y P E S            */
@@ -22,7 +20,7 @@
 
 static void ps5_l2cap_init_service(const char *name, uint16_t psm, uint8_t security_id);
 static void ps5_l2cap_deinit_service(const char *name, uint16_t psm);
-static void ps5_l2cap_connect_ind_cback(BD_ADDR  bd_addr, uint16_t l2cap_cid, uint16_t psm, uint8_t l2cap_id);
+static void ps5_l2cap_connect_ind_cback(BD_ADDR bd_addr, uint16_t l2cap_cid, uint16_t psm, uint8_t l2cap_id);
 static void ps5_l2cap_connect_cfm_cback(uint16_t l2cap_cid, uint16_t result);
 static void ps5_l2cap_config_ind_cback(uint16_t l2cap_cid, tL2CAP_CFG_INFO *p_cfg);
 static void ps5_l2cap_config_cfm_cback(uint16_t l2cap_cid, tL2CAP_CFG_INFO *p_cfg);
@@ -30,7 +28,6 @@ static void ps5_l2cap_disconnect_ind_cback(uint16_t l2cap_cid, bool ack_needed);
 static void ps5_l2cap_disconnect_cfm_cback(uint16_t l2cap_cid, uint16_t result);
 static void ps5_l2cap_data_ind_cback(uint16_t l2cap_cid, BT_HDR *p_msg);
 static void ps5_l2cap_congest_cback(uint16_t cid, bool congested);
-
 
 /********************************************************************************/
 /*                         L O C A L    V A R I A B L E S                       */
@@ -47,8 +44,7 @@ static const tL2CAP_APPL_INFO dyn_info = {
     NULL,
     ps5_l2cap_data_ind_cback,
     ps5_l2cap_congest_cback,
-    NULL
-};
+    NULL};
 
 static tL2CAP_CFG_INFO ps5_cfg_info;
 
@@ -56,7 +52,6 @@ bool is_connected = false;
 static BD_ADDR g_bd_addr;
 uint16_t l2cap_control_channel = 0;
 uint16_t l2cap_interrupt_channel = 0;
-
 
 /********************************************************************************/
 /*                      P U B L I C    F U N C T I O N S                        */
@@ -71,7 +66,8 @@ uint16_t l2cap_interrupt_channel = 0;
 ** Returns          void
 **
 *******************************************************************************/
-void ps5_l2cap_init_services() {
+void ps5_l2cap_init_services()
+{
     ps5_l2cap_init_service("ps5-HIDC", BT_PSM_HID_CONTROL, BTM_SEC_SERVICE_FIRST_EMPTY);
     ps5_l2cap_init_service("ps5-HIDI", BT_PSM_HID_INTERRUPT, BTM_SEC_SERVICE_FIRST_EMPTY + 1);
 }
@@ -85,7 +81,8 @@ void ps5_l2cap_init_services() {
 ** Returns          void
 **
 *******************************************************************************/
-void ps5_l2cap_deinit_services() {
+void ps5_l2cap_deinit_services()
+{
     ps5_l2cap_deinit_service("ps5-HIDC", BT_PSM_HID_CONTROL);
     ps5_l2cap_deinit_service("ps5-HIDI", BT_PSM_HID_INTERRUPT);
 }
@@ -99,7 +96,8 @@ void ps5_l2cap_deinit_services() {
 ** Returns          Result of connection reqiest
 **
 *******************************************************************************/
-long ps5_l2cap_connect(BD_ADDR addr) {
+long ps5_l2cap_connect(BD_ADDR addr)
+{
     memmove(g_bd_addr, addr, sizeof(BD_ADDR));
 
     return ps5_l2cap_reconnect();
@@ -114,13 +112,15 @@ long ps5_l2cap_connect(BD_ADDR addr) {
 ** Returns          Result of connection reqiest
 **
 *******************************************************************************/
-long ps5_l2cap_reconnect(void) {
+long ps5_l2cap_reconnect(void)
+{
     long ret;
-    
+
     ret = L2CA_ErtmConnectReq(BT_PSM_HID_CONTROL, g_bd_addr, NULL);
-    //ret = L2CA_CONNECT_REQ(BT_PSM_HID_CONTROL, g_bd_addr, NULL, NULL);
+    // ret = L2CA_CONNECT_REQ(BT_PSM_HID_CONTROL, g_bd_addr, NULL, NULL);
     ESP_LOGE(ps5_TAG, "L2CA_CONNECT_REQ ret=%ld\n", ret);
-    if (ret == 0) {
+    if (ret == 0)
+    {
         return -1;
     }
     l2cap_control_channel = ret;
@@ -129,7 +129,6 @@ long ps5_l2cap_reconnect(void) {
 
     return ret;
 }
-
 
 /*******************************************************************************
 **
@@ -140,25 +139,28 @@ long ps5_l2cap_reconnect(void) {
 ** Returns          void
 **
 *******************************************************************************/
-void ps5_l2cap_send_hid( hid_cmd_t *hid_cmd, uint8_t len ) {
+void ps5_l2cap_send_hid(hid_cmd_t *hid_cmd, uint8_t len)
+{
     uint8_t result;
     BT_HDR *p_buf;
 
     p_buf = (BT_HDR *)osi_malloc(BT_DEFAULT_BUFFER_SIZE);
 
-    if (!p_buf) {
+    if (!p_buf)
+    {
         ESP_LOGE(ps5_TAG, "[%s] allocating buffer for sending the command failed", __func__);
     }
 
-    p_buf->length = len + ( sizeof(*hid_cmd) - sizeof(hid_cmd->data) );
+    p_buf->len = len + (sizeof(*hid_cmd) - sizeof(hid_cmd->data));
     p_buf->offset = L2CAP_MIN_OFFSET;
 
-    memcpy((uint8_t *)(p_buf + 1) + p_buf->offset, (uint8_t*)hid_cmd, p_buf->length);
+    memcpy((uint8_t *)(p_buf + 1) + p_buf->offset, (uint8_t *)hid_cmd, p_buf->len);
 
-    if (l2cap_control_channel == 0) {
+    if (l2cap_control_channel == 0)
+    {
         ESP_LOGE(ps5_TAG, "[%s] l2cap_control_channel not initialized.", __func__);
     }
-    result = L2CA_DataWrite(l2cap_control_channel, p_buf );
+    result = L2CA_DataWrite(l2cap_control_channel, p_buf);
 
     if (result == L2CAP_DW_SUCCESS)
         ESP_LOGI(ps5_TAG, "[%s] sending command: success", __func__);
@@ -170,6 +172,36 @@ void ps5_l2cap_send_hid( hid_cmd_t *hid_cmd, uint8_t len ) {
         ESP_LOGE(ps5_TAG, "[%s] sending command: failed", __func__);
 }
 
+/*
+int l2cap_send(uint16_t cid, uint8_t *data, uint8_t len)
+{
+    return result;
+}*/
+
+void ps5_l2cap_send(uint8_t *data, uint8_t len)
+{
+    BT_HDR *btHdr = (BT_HDR *)osi_malloc(BT_DEFAULT_BUFFER_SIZE);
+    memset(btHdr, 0, BT_DEFAULT_BUFFER_SIZE);
+
+    btHdr->len = len;
+    btHdr->offset = L2CAP_MIN_OFFSET;
+    uint8_t *p_out = (uint8_t *)(btHdr + 1) + btHdr->offset;
+    memcpy(p_out, data, btHdr->len);
+
+    /*
+    char str[256];
+    int n = 0;
+    for (int i = 0; i < len; i++)
+    {
+        n += sprintf((char *)&str[n], "%02X", data[i]);
+    }
+    ESP_LOGI(ps5_TAG, "TEST: %s", str);*/
+
+    int result = L2CA_DataWrite(l2cap_interrupt_channel, btHdr);
+    ESP_LOGI(ps5_TAG, "sending command: %i, cid=0x%02x", result, l2cap_interrupt_channel);
+
+    //    int result = l2cap_send(l2cap_interrupt_channel, buf, len);
+}
 
 /********************************************************************************/
 /*                      L O C A L    F U N C T I O N S                          */
@@ -185,17 +217,20 @@ void ps5_l2cap_send_hid( hid_cmd_t *hid_cmd, uint8_t len ) {
 ** Returns          void
 **
 *******************************************************************************/
-static void ps5_l2cap_init_service(const char *name, uint16_t psm, uint8_t security_id) {
+static void ps5_l2cap_init_service(const char *name, uint16_t psm, uint8_t security_id)
+{
     // log_i("init services");
     /* Register the PSM for incoming connections */
-    if (!L2CA_Register(psm, (tL2CAP_APPL_INFO *) &dyn_info)) {
+    if (!L2CA_Register(psm, (tL2CAP_APPL_INFO *)&dyn_info))
+    {
         ESP_LOGE(ps5_TAG, "%s Registering service %s failed", __func__, name);
         return;
     }
 
     /* Register with the Security Manager for our specific security level (none) */
-    if (!BTM_SetSecurityLevel (false, name, security_id, 0, psm, 0, 0)) {
-        ESP_LOGE (ps5_TAG, "%s Registering security service %s failed", __func__, name);\
+    if (!BTM_SetSecurityLevel(false, name, security_id, 0, psm, 0, 0))
+    {
+        ESP_LOGE(ps5_TAG, "%s Registering security service %s failed", __func__, name);
         return;
     }
 
@@ -211,12 +246,12 @@ static void ps5_l2cap_init_service(const char *name, uint16_t psm, uint8_t secur
 ** Returns          void
 **
 *******************************************************************************/
-static void ps5_l2cap_deinit_service(const char *name, uint16_t psm ) {
+static void ps5_l2cap_deinit_service(const char *name, uint16_t psm)
+{
     /* Deregister the PSM from incoming connections */
     L2CA_Deregister(psm);
     ESP_LOGI(ps5_TAG, "[%s] Service %s Deinitialized", __func__, name);
 }
-
 
 /*******************************************************************************
 **
@@ -227,8 +262,9 @@ static void ps5_l2cap_deinit_service(const char *name, uint16_t psm ) {
 ** Returns          void
 **
 *******************************************************************************/
-static void ps5_l2cap_connect_ind_cback (BD_ADDR  bd_addr, uint16_t l2cap_cid, uint16_t psm, uint8_t l2cap_id) {
-    ESP_LOGI(ps5_TAG, "[%s] bd_addr: %s\n  l2cap_cid: 0x%02x\n  psm: %d\n  id: %d", __func__, bd_addr, l2cap_cid, psm, l2cap_id );
+static void ps5_l2cap_connect_ind_cback(BD_ADDR bd_addr, uint16_t l2cap_cid, uint16_t psm, uint8_t l2cap_id)
+{
+    ESP_LOGI(ps5_TAG, "[%s] bd_addr: %s\n  l2cap_cid: 0x%02x\n  psm: %d\n  id: %d", __func__, bd_addr, l2cap_cid, psm, l2cap_id);
 
     /* Send connection pending response to the L2CAP layer. */
     L2CA_CONNECT_RSP(bd_addr, l2cap_id, l2cap_cid, L2CAP_CONN_PENDING, L2CAP_CONN_PENDING, NULL, NULL);
@@ -239,13 +275,15 @@ static void ps5_l2cap_connect_ind_cback (BD_ADDR  bd_addr, uint16_t l2cap_cid, u
     /* Send a Configuration Request. */
     L2CA_CONFIG_REQ(l2cap_cid, &ps5_cfg_info);
 
-    if (psm == BT_PSM_HID_CONTROL) {
+    if (psm == BT_PSM_HID_CONTROL)
+    {
         l2cap_control_channel = l2cap_cid;
-    } else if (psm == BT_PSM_HID_INTERRUPT) {
+    }
+    else if (psm == BT_PSM_HID_INTERRUPT)
+    {
         l2cap_interrupt_channel = l2cap_cid;
     }
 }
-
 
 /*******************************************************************************
 **
@@ -257,10 +295,10 @@ static void ps5_l2cap_connect_ind_cback (BD_ADDR  bd_addr, uint16_t l2cap_cid, u
 ** Returns          void
 **
 *******************************************************************************/
-static void ps5_l2cap_connect_cfm_cback(uint16_t l2cap_cid, uint16_t result) {
-    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  result: %d", __func__, l2cap_cid, result );
+static void ps5_l2cap_connect_cfm_cback(uint16_t l2cap_cid, uint16_t result)
+{
+    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  result: %d", __func__, l2cap_cid, result);
 }
-
 
 /*******************************************************************************
 **
@@ -272,19 +310,20 @@ static void ps5_l2cap_connect_cfm_cback(uint16_t l2cap_cid, uint16_t result) {
 ** Returns          void
 **
 *******************************************************************************/
-void ps5_l2cap_config_cfm_cback(uint16_t l2cap_cid, tL2CAP_CFG_INFO *p_cfg) {
-    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  p_cfg->result: %d", __func__, l2cap_cid, p_cfg->result );
+void ps5_l2cap_config_cfm_cback(uint16_t l2cap_cid, tL2CAP_CFG_INFO *p_cfg)
+{
+    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  p_cfg->result: %d", __func__, l2cap_cid, p_cfg->result);
 
     /* The ps5 controller is connected after    */
     /* receiving the second config confirmation */
     bool prev_is_connected = is_connected;
     is_connected = l2cap_cid == l2cap_interrupt_channel;
     ESP_LOGI(ps5_TAG, "=======  %i / %i / %i / %i", is_connected, l2cap_cid, l2cap_interrupt_channel, prev_is_connected);
-    if (prev_is_connected != is_connected) {
+    if (prev_is_connected != is_connected)
+    {
         ps5ConnectEvent(is_connected);
     }
 }
-
 
 /*******************************************************************************
 **
@@ -296,14 +335,14 @@ void ps5_l2cap_config_cfm_cback(uint16_t l2cap_cid, tL2CAP_CFG_INFO *p_cfg) {
 ** Returns          void
 **
 *******************************************************************************/
-void ps5_l2cap_config_ind_cback(uint16_t l2cap_cid, tL2CAP_CFG_INFO *p_cfg) {
-    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  p_cfg->result: %d\n  p_cfg->mtu_present: %d\n  p_cfg->mtu: %d", __func__, l2cap_cid, p_cfg->result, p_cfg->mtu_present, p_cfg->mtu );
+void ps5_l2cap_config_ind_cback(uint16_t l2cap_cid, tL2CAP_CFG_INFO *p_cfg)
+{
+    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  p_cfg->result: %d\n  p_cfg->mtu_present: %d\n  p_cfg->mtu: %d", __func__, l2cap_cid, p_cfg->result, p_cfg->mtu_present, p_cfg->mtu);
 
     p_cfg->result = L2CAP_CFG_OK;
 
     L2CA_ConfigRsp(l2cap_cid, p_cfg);
 }
-
 
 /*******************************************************************************
 **
@@ -315,15 +354,16 @@ void ps5_l2cap_config_ind_cback(uint16_t l2cap_cid, tL2CAP_CFG_INFO *p_cfg) {
 ** Returns          void
 **
 *******************************************************************************/
-void ps5_l2cap_disconnect_ind_cback(uint16_t l2cap_cid, bool ack_needed) {
-    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  ack_needed: %d", __func__, l2cap_cid, ack_needed );
+void ps5_l2cap_disconnect_ind_cback(uint16_t l2cap_cid, bool ack_needed)
+{
+    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  ack_needed: %d", __func__, l2cap_cid, ack_needed);
     is_connected = false;
-    if (ack_needed) {
+    if (ack_needed)
+    {
         L2CA_DisconnectRsp(l2cap_cid);
     }
     ps5ConnectEvent(is_connected);
 }
-
 
 /*******************************************************************************
 **
@@ -335,10 +375,10 @@ void ps5_l2cap_disconnect_ind_cback(uint16_t l2cap_cid, bool ack_needed) {
 ** Returns          void
 **
 *******************************************************************************/
-static void ps5_l2cap_disconnect_cfm_cback(uint16_t l2cap_cid, uint16_t result) {
-    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  result: %d", __func__, l2cap_cid, result );
+static void ps5_l2cap_disconnect_cfm_cback(uint16_t l2cap_cid, uint16_t result)
+{
+    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  result: %d", __func__, l2cap_cid, result);
 }
-
 
 /*******************************************************************************
 **
@@ -350,14 +390,24 @@ static void ps5_l2cap_disconnect_cfm_cback(uint16_t l2cap_cid, uint16_t result) 
 ** Returns          void
 **
 *******************************************************************************/
-static void ps5_l2cap_data_ind_cback(uint16_t l2cap_cid, BT_HDR *p_buf) {
-    if (p_buf->length > 2) {
-        parsePacket(p_buf->data);
+static void ps5_l2cap_data_ind_cback(uint16_t l2cap_cid, BT_HDR *p_buf)
+{
+    if (p_buf->len > 2)
+    {
+        uint8_t report_id = p_buf->data[p_buf->offset + 1];
+        if (report_id == 0x01)
+        {
+            parsePacket_simplified(p_buf->data);
+        }
+        else if (report_id == 0x31)
+        {
+            // ESP_LOGI(ps5_TAG, "0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x\n", p_buf->data[p_buf->offset + 2], p_buf->data[p_buf->offset + 3], p_buf->data[p_buf->offset + 4], p_buf->data[p_buf->offset + 5], p_buf->data[p_buf->offset + 6], p_buf->data[p_buf->offset + 7]);
+            parsePacket_extended(&p_buf->data[p_buf->offset]);
+        }
     }
 
     osi_free(p_buf);
 }
-
 
 /*******************************************************************************
 **
@@ -368,6 +418,7 @@ static void ps5_l2cap_data_ind_cback(uint16_t l2cap_cid, BT_HDR *p_buf) {
 ** Returns          void
 **
 *******************************************************************************/
-static void ps5_l2cap_congest_cback (uint16_t l2cap_cid, bool congested) {
-    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  congested: %d", __func__, l2cap_cid, congested );
+static void ps5_l2cap_congest_cback(uint16_t l2cap_cid, bool congested)
+{
+    ESP_LOGI(ps5_TAG, "[%s] l2cap_cid: 0x%02x\n  congested: %d", __func__, l2cap_cid, congested);
 }

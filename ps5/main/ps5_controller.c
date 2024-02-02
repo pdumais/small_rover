@@ -15,7 +15,6 @@
 static const char *TAG = "ps5_controller";
 static ps5_t _data;
 static ps5_event_t _event;
-static ps5_cmd_t _output;
 
 #define ESP_BD_ADDR_HEX_PTR(addr)                                \
   (uint8_t *)addr + 0, (uint8_t *)addr + 1, (uint8_t *)addr + 2, \
@@ -135,14 +134,7 @@ unsigned long millis()
 
 bool ps5_isConnected()
 {
-  bool connected = ps5IsConnected();
-  /*static unsigned long tryReconnectAt = 0;
-  if (!connected && millis() - tryReconnectAt > 5000UL)
-  {
-    tryReconnectAt = millis();
-    // ps5_l2cap_reconnect();
-  }*/
-  return connected;
+  return ps5IsConnected();
 }
 
 void ps5_try_pairing()
@@ -153,27 +145,74 @@ void ps5_try_pairing()
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 }
-
-void ps5_setLed(uint8_t r, uint8_t g, uint8_t b)
+void ps5_disable_lightbar()
 {
-  _output.r = r;
-  _output.g = g;
-  _output.b = b;
+  ps5_output_report_t out = {0};
+  out.valid_flag2 = DS5_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE;
+  out.lightbar_setup = DS5_LIGHTBAR_SETUP_LIGHT_OUT;
+
+  ps5_send_output_report(&out);
 }
 
-void ps5_setRumble(uint8_t small, uint8_t large)
+void ps5_set_led(uint8_t r, uint8_t g, uint8_t b)
 {
-  _output.smallRumble = small;
-  _output.largeRumble = large;
+  ps5_output_report_t out = {
+      .lightbar_red = r,
+      .lightbar_green = g,
+      .lightbar_blue = b,
+      .valid_flag1 = DS5_FLAG1_LIGHTBAR,
+  };
+
+  ps5_send_output_report(&out);
+}
+
+void ps5_set_rumble(uint8_t small, uint8_t large)
+{
+
+  ps5_output_report_t out = {
+      .motor_right = small,
+      .motor_left = large,
+      .valid_flag0 = DS5_FLAG0_HAPTICS_SELECT | DS5_FLAG0_COMPATIBLE_VIBRATION,
+  };
+  ps5_send_output_report(&out);
+}
+
+void ps5_trigger_effect(uint8_t side, uint8_t effect)
+{
+  ps5_output_report_t out = {0};
+  uint8_t *effect_p = 0;
+  if (side == 0)
+  {
+    effect_p = &out.left_trigger_motor_mode;
+    out.valid_flag0 = DS_OUTPUT_VALID_FLAG0_LEFT_TRIGGER_MOTOR_ENABLE;
+  }
+  else
+  {
+    effect_p = &out.right_trigger_motor_mode;
+    out.valid_flag0 = DS_OUTPUT_VALID_FLAG0_RIGHT_TRIGGER_MOTOR_ENABLE;
+  }
+
+  if (effect == 0)
+  {
+    effect_p[0] = 0x05;
+  }
+  else if (effect == 1)
+  {
+    effect_p[0] = 0x21;
+    effect_p[1] = 0xFF;
+    effect_p[2] = 0x03;
+    effect_p[3] = 0xFF;
+    effect_p[4] = 0xFF;
+    effect_p[5] = 0xFF;
+    effect_p[6] = 0x3F;
+  }
+
+  ps5_send_output_report(&out);
 }
 
 void ps5_setFlashRate(uint8_t onTime, uint8_t offTime)
 {
-  _output.flashOn = onTime / 10;
-  _output.flashOff = offTime / 10;
 }
-
-void ps5_sendToController() { ps5SetOutput(_output); }
 
 void ps5_attach(callback_t callback) { _callback_event = callback; }
 

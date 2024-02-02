@@ -71,6 +71,28 @@ void set_checksum(ps5_t *data)
     data->checksum = c;
 }
 
+void block_trigger(int side, bool state)
+{
+    ps5_trigger_effect(0, state ? 1 : 0);
+}
+
+void rumble(bool state)
+{
+    if (state)
+    {
+        ps5_set_rumble(255, 255);
+    }
+    else
+    {
+        ps5_set_rumble(0, 0);
+    }
+}
+
+void set_pad_led(uint8_t r, uint8_t g, uint8_t b)
+{
+    ps5_set_led(r, g, b);
+}
+
 void ps5_check(void *arg)
 {
     bool was_connected = 0;
@@ -113,6 +135,7 @@ void ps5_check(void *arg)
 
         gpio_set_level(GPIO_CTRL_LED, 1);
         ps5_t *data = ps5_get_data();
+
         bool has_changes = (data->button.right != old_data.button.right ||
                             data->button.left != old_data.button.left ||
                             data->button.up != old_data.button.up ||
@@ -136,7 +159,27 @@ void ps5_check(void *arg)
 
         if (has_changes)
         {
+
+            if (data->button.up)
+            {
+                ESP_LOGI(TAG, "Button UP");
+                block_trigger(0, true);
+            }
+            else
+            {
+                block_trigger(0, false);
+            }
+            /*if (data->button.down)
+            {
+                set_pad_led(0, 255, 0);
+            }
+            else
+            {
+                set_pad_led(0, 255, 255);
+            }*/
+
             ESP_LOGI(TAG, "PS5 Event");
+
             memcpy(&old_data, data, sizeof(ps5_t));
             old_data.latestPacket = true;
             old_data.controller_connected = true;

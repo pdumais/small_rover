@@ -34,9 +34,10 @@
 
 /* Define the header of each buffer used in the Bluetooth stack.
  */
-typedef struct {
+typedef struct
+{
   uint16_t event;
-  uint16_t length;
+  uint16_t len;
   uint16_t offset;
   uint16_t layer_specific;
   uint8_t data[];
@@ -45,7 +46,8 @@ typedef struct {
 #define BT_PSM_HID_CONTROL 0x0011
 #define BT_PSM_HID_INTERRUPT 0x0013
 
-typedef struct {
+typedef struct
+{
   uint8_t qos_flags;          /* TBD */
   uint8_t service_type;       /* see below */
   uint32_t token_rate;        /* bytes/second */

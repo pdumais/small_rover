@@ -10,7 +10,7 @@
 #define BT_MODE ESP_BT_MODE_CLASSIC_BT
 #else
 #error \
-  "The selected Bluetooth controller mode is not supported by the ESP32-ps5 module"
+    "The selected Bluetooth controller mode is not supported by the ESP32-ps5 module"
 #endif
 
 /* Detect ESP-IDF releases */
@@ -23,7 +23,6 @@
 #if __has_include("core_version.h")
 #include <core_version.h>
 #endif
-
 
 /* Arduino releases using IDF v3.2.3 */
 #if defined(ARDUINO_ESP32_RELEASE_1_0_4) || defined(ARDUINO_ESP32_RELEASE_1_0_3)
@@ -43,9 +42,9 @@
 #define ESP_IDF_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
 
 // Current IDF version, as an integer
-#define ESP_IDF_VERSION  ESP_IDF_VERSION_VAL(ESP_IDF_VERSION_MAJOR, \
-                                             ESP_IDF_VERSION_MINOR, \
-                                             ESP_IDF_VERSION_PATCH)
+#define ESP_IDF_VERSION ESP_IDF_VERSION_VAL(ESP_IDF_VERSION_MAJOR, \
+                                            ESP_IDF_VERSION_MINOR, \
+                                            ESP_IDF_VERSION_PATCH)
 
 #endif // __has_include("esp_idf_version.h")
 
@@ -67,24 +66,28 @@
 /*                         S H A R E D   T Y P E S */
 /********************************************************************************/
 
-enum hid_cmd_code {
+enum hid_cmd_code
+{
   hid_cmd_code_set_report = 0x50,
   hid_cmd_code_type_output = 0x02,
   hid_cmd_code_type_feature = 0x03
 };
 
-enum hid_cmd_identifier {
+enum hid_cmd_identifier
+{
   hid_cmd_identifier_ps5_enable = 0xF4,
   hid_cmd_identifier_ps5_control = 0x11
 };
 
-typedef struct {
+typedef struct
+{
   uint8_t code;
   uint8_t identifier;
   uint8_t data[ps5_SEND_BUFFER_SIZE];
 } hid_cmd_t;
 
-enum ps5_control_packet_index {
+enum ps5_control_packet_index
+{
   ps5_control_packet_index_small_rumble = 5,
   ps5_control_packet_index_large_rumble = 6,
 
@@ -107,7 +110,8 @@ void ps5PacketEvent(ps5_t ps5, ps5_event_t event);
 /*                      P A R S E R   F U N C T I O N S */
 /********************************************************************************/
 
-void parsePacket(uint8_t* packet);
+void parsePacket_simplified(uint8_t *packet);
+void parsePacket_extended(uint8_t *packet);
 
 /********************************************************************************/
 /*                          S P P   F U N C T I O N S */
@@ -122,5 +126,6 @@ void sppInit();
 void ps5_l2cap_init_services();
 void ps5_l2cap_deinit_services();
 void ps5_l2cap_send_hid(hid_cmd_t *hid_cmd, uint8_t len);
+void ps5_l2cap_send(uint8_t *buf, uint8_t len);
 
 #endif

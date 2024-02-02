@@ -8,15 +8,16 @@ bool ps5_begin(const char *mac);
 bool ps5_isConnected();
 
 void ps5_try_pairing();
-void ps5_setLed(uint8_t r, uint8_t g, uint8_t b);
-void ps5_setRumble(uint8_t small, uint8_t large);
+void ps5_set_led(uint8_t r, uint8_t g, uint8_t b);
+void ps5_set_rumble(uint8_t small, uint8_t large);
+void ps5_trigger_effect(uint8_t side, uint8_t effect);
+
 void ps5_setFlashRate(uint8_t onTime, uint8_t offTime);
-void ps5_sendToController();
 void ps5_attach(callback_t callback);
 void ps5_attachOnConnect(callback_t callback);
 void ps5_attachOnDisconnect(callback_t callback);
 uint8_t *ps5_LatestPacket();
-
+void ps5_disable_lightbar();
 ps5_t *ps5_get_data();
 ps5_event_t *ps5_get_event();
 
