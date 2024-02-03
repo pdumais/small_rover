@@ -1,34 +1,66 @@
+
 # currently working on:
     Arm
         make Claw
         Add servo to rotate claw?
+            weight of the claw would stress the servo shaft? Doesn't matter. I can try it without a bearing at first
 
 
 # Tasks
+    Re-assing LED ring
+        same as now for disconnected
+        while moving, flash proportional to speed
+            only 1 of 4 quarters in the direction of vehicle: left,right, straight from, straight back
+    i2c
+        I had to put a delay when transmitting 2 packets in a row from the slave. Also, master always reads something
+            when slave has nothing in FIFO. why is something being clocked out?
+
+    How to monitor battery level?
+
+    Route recording
+        record buffer is small. After the buffer is full, we should flush to flash
+        after 100 events (or whatever it takes to create 3.5k, flush the page
+            struct page {
+                char nextkey[4]
+                record_data[100]
+                int record_count
+            }
+            use the last generated random key, or "record_data" if it's the first page
+            generate a new key, set that key as the "nextkey"
+            set the record_count.
+            re-init buffer.
+            on stop: write last page with an empty "nextpage"
+
 
     PCB for mainboard
         4 DRV8871
         socket for ESP
         terminal headers
-
-    Deep sleep
-        Does not work properly.
-        Will servos use any current?
-        LEDs are still lit on both boards
+        accelerometer / gyro
 
     Obstacle detection  
-        dualsense rumble when obstacle. or feedback on the throttle button
-            unfortunately, the dualsense library I'm using does not work when trying to send commands towards the controller. https://github.com/rodneybakiskan/ps5-esp32/issues/3
-            Is it easy to fix?
         Use IR range finder. Extend steering servo horn so that sensor rotates with steering
+            Sharp GP2D12 only works for distances over 10cm. Under 10cm, we get a voltage curve that we cannot distinguish between a real reading over 10cm.
+            Being too close would be interpreted as being too far. For example, 1.2v is either 36cm or 2cm
+            So need to install the sensor 10cm inside the vehicle to make sure nothing  gets too close to the sensor
+        Or use bumper switches            
 
-    PS5 controller
-        Use a panel mount momentary button wired to ESP pin 18 to initiate pairing. It is already implemented, just need the button
+    Pointing device on small servo, controlled with up/down buttons on the left side of DS
 
-    Route recording
-        record buffer is small. After the buffer is full, we should flush to flash
+    better frame
+        cube. 50cm x 40cm
+        steering with ball joints
+        bumper switches to provide feedback on collisions
 
-    Power supply
-        Instead of being on main board, should be a separate unit that exposes a few cables for each components to use.
-        PS would sit on top of battery
+        Power supply
+            Instead of being on main board, should be a separate unit that exposes a few cables for each components to use.
+            PS would sit on top of battery
 
+
+
+
+
+
+# Dual sense info
+        https://gist.github.com/Nielk1/6d54cc2c00d2201ccb8c2720ad7538db
+        https://github.com/nowrep/dualsensectl/blob/main/main.c#L746

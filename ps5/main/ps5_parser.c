@@ -69,12 +69,16 @@ enum ps5_status_mask
 /********************************************************************************/
 /*              L O C A L    F U N C T I O N     P R O T O T Y P E S */
 /********************************************************************************/
+ps5_status_t parsePacketStatus_extended(uint8_t *packet);
+ps5_analog_stick_t parsePacketAnalogStick_extended(uint8_t *packet);
+ps5_analog_button_t parsePacketAnalogButton_extended(uint8_t *packet);
+ps5_button_t parsePacketButtons_extended(uint8_t *packet);
 
 ps5_sensor_t parsePacketSensor(uint8_t *packet);
-ps5_status_t parsePacketStatus(uint8_t *packet);
-ps5_analog_stick_t parsePacketAnalogStick(uint8_t *packet);
-ps5_analog_button_t parsePacketAnalogButton(uint8_t *packet);
-ps5_button_t parsePacketButtons(uint8_t *packet);
+ps5_status_t parsePacketStatus_simplified(uint8_t *packet);
+ps5_analog_stick_t parsePacketAnalogStick_simplified(uint8_t *packet);
+ps5_analog_button_t parsePacketAnalogButton_simplified(uint8_t *packet);
+ps5_button_t parsePacketButtons_simplified(uint8_t *packet);
 ps5_event_t parseEvent(ps5_t prev, ps5_t cur);
 
 /********************************************************************************/
@@ -89,15 +93,31 @@ static ps5_event_callback_t ps5_event_cb = NULL;
 /********************************************************************************/
 void parserSetEventCb(ps5_event_callback_t cb) { ps5_event_cb = cb; }
 
-void parsePacket(uint8_t *packet)
+void parsePacket_simplified(uint8_t *packet)
 {
   ps5_t prev_ps5 = ps5;
 
-  ps5.button = parsePacketButtons(packet);
-  ps5.analog.stick = parsePacketAnalogStick(packet);
-  ps5.analog.button = parsePacketAnalogButton(packet);
+  ps5.button = parsePacketButtons_simplified(packet);
+  ps5.analog.stick = parsePacketAnalogStick_simplified(packet);
+  ps5.analog.button = parsePacketAnalogButton_simplified(packet);
   // ps5.sensor = parsePacketSensor(packet);
-  ps5.status = parsePacketStatus(packet);
+  ps5.status = parsePacketStatus_simplified(packet);
+  ps5.latestPacket = true;
+
+  ps5_event_t ps5Event = parseEvent(prev_ps5, ps5);
+
+  ps5PacketEvent(ps5, ps5Event);
+}
+
+void parsePacket_extended(uint8_t *packet)
+{
+  ps5_t prev_ps5 = ps5;
+
+  ps5.button = parsePacketButtons_extended(packet);
+  ps5.analog.stick = parsePacketAnalogStick_extended(packet);
+  ps5.analog.button = parsePacketAnalogButton_extended(packet);
+  ps5.sensor = parsePacketSensor(packet);
+  ps5.status = parsePacketStatus_extended(packet);
   ps5.latestPacket = true;
 
   ps5_event_t ps5Event = parseEvent(prev_ps5, ps5);
@@ -188,7 +208,7 @@ ps5_event_t parseEvent(ps5_t prev, ps5_t cur)
 /********************/
 /*    A N A L O G   */
 /********************/
-ps5_analog_stick_t parsePacketAnalogStick(uint8_t *packet)
+ps5_analog_stick_t parsePacketAnalogStick_simplified(uint8_t *packet)
 {
   ps5_analog_stick_t ps5AnalogStick;
 
@@ -202,7 +222,7 @@ ps5_analog_stick_t parsePacketAnalogStick(uint8_t *packet)
   return ps5AnalogStick;
 }
 
-ps5_analog_button_t parsePacketAnalogButton(uint8_t *packet)
+ps5_analog_button_t parsePacketAnalogButton_simplified(uint8_t *packet)
 {
   ps5_analog_button_t ps5AnalogButton;
 
@@ -216,7 +236,7 @@ ps5_analog_button_t parsePacketAnalogButton(uint8_t *packet)
 /*   B U T T O N S   */
 /*********************/
 
-ps5_button_t parsePacketButtons(uint8_t *packet)
+ps5_button_t parsePacketButtons_simplified(uint8_t *packet)
 {
   ps5_button_t ps5_button;
   uint8_t frontBtnData = packet[packet_index_button_standard];
@@ -258,7 +278,7 @@ ps5_button_t parsePacketButtons(uint8_t *packet)
 /*******************************/
 /*   S T A T U S   F L A G S   */
 /*******************************/
-ps5_status_t parsePacketStatus(uint8_t *packet)
+ps5_status_t parsePacketStatus_simplified(uint8_t *packet)
 {
   ps5_status_t ps5Status;
 
@@ -276,6 +296,7 @@ ps5_status_t parsePacketStatus(uint8_t *packet)
 ps5_sensor_t parsePacketSensor(uint8_t *packet)
 {
   ps5_sensor_t ps5Sensor = {0};
+  // TODO: We now have access to this data. It is described there: https://controllers.fandom.com/wiki/Sony_DualSense#HID_Report_0x01_Input_BT
   /*
       const uint16_t offset = 0x200;
 
@@ -289,4 +310,83 @@ ps5_sensor_t parsePacketSensor(uint8_t *packet)
      << 8) + packet[packet_index_sensor_gyroscope_z+1]     - offset;
   */
   return ps5Sensor;
+}
+
+ps5_analog_stick_t parsePacketAnalogStick_extended(uint8_t *packet)
+{
+  ps5_analog_stick_t ps5AnalogStick;
+
+  const uint8_t offset = 128;
+
+  ps5AnalogStick.lx = packet[3] - offset;
+  ps5AnalogStick.ly = -packet[4] + offset - 1;
+  ps5AnalogStick.rx = packet[5] - offset;
+  ps5AnalogStick.ry = -packet[6] + offset - 1;
+
+  return ps5AnalogStick;
+}
+
+ps5_analog_button_t parsePacketAnalogButton_extended(uint8_t *packet)
+{
+  ps5_analog_button_t ps5AnalogButton;
+
+  ps5AnalogButton.l2 = packet[7];
+  ps5AnalogButton.r2 = packet[8];
+
+  return ps5AnalogButton;
+}
+
+/*********************/
+/*   B U T T O N S   */
+/*********************/
+
+ps5_button_t parsePacketButtons_extended(uint8_t *packet)
+{
+  ps5_button_t ps5_button;
+  uint8_t frontBtnData = packet[10];
+  uint8_t extraBtnData = packet[11];
+  uint8_t psBtnData = packet[12];
+  uint8_t directionBtnsOnly = button_mask_direction & frontBtnData;
+
+  ps5_button.up = directionBtnsOnly == button_mask_up;
+  ps5_button.right = directionBtnsOnly == button_mask_right;
+  ps5_button.down = directionBtnsOnly == button_mask_down;
+  ps5_button.left = directionBtnsOnly == button_mask_left;
+
+  ps5_button.upright = directionBtnsOnly == button_mask_upright;
+  ps5_button.upleft = directionBtnsOnly == button_mask_upleft;
+  ps5_button.downright = directionBtnsOnly == button_mask_downright;
+  ps5_button.downleft = directionBtnsOnly == button_mask_downleft;
+
+  ps5_button.triangle = (frontBtnData & button_mask_triangle) ? true : false;
+  ps5_button.circle = (frontBtnData & button_mask_circle) ? true : false;
+  ps5_button.cross = (frontBtnData & button_mask_cross) ? true : false;
+  ps5_button.square = (frontBtnData & button_mask_square) ? true : false;
+
+  ps5_button.l1 = (extraBtnData & button_mask_l1) ? true : false;
+  ps5_button.r1 = (extraBtnData & button_mask_r1) ? true : false;
+  ps5_button.l2 = (extraBtnData & button_mask_l2) ? true : false;
+  ps5_button.r2 = (extraBtnData & button_mask_r2) ? true : false;
+
+  ps5_button.share = (extraBtnData & button_mask_share) ? true : false;
+  ps5_button.options = (extraBtnData & button_mask_options) ? true : false;
+  ps5_button.l3 = (extraBtnData & button_mask_l3) ? true : false;
+  ps5_button.r3 = (extraBtnData & button_mask_r3) ? true : false;
+
+  ps5_button.ps = (psBtnData & button_mask_ps) ? true : false;
+  ps5_button.touchpad = (psBtnData & button_mask_touchpad) ? true : false;
+
+  return ps5_button;
+}
+
+/*******************************/
+/*   S T A T U S   F L A G S   */
+/*******************************/
+ps5_status_t parsePacketStatus_extended(uint8_t *packet)
+{
+  ps5_status_t ps5Status;
+
+  ps5Status.battery = packet[56] & ps5_status_mask_battery;
+
+  return ps5Status;
 }

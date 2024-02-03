@@ -15,8 +15,8 @@
 #define MIN_ANGLE2 -10.0 // Boom
 #define MAX_ANGLE3 90.0
 #define MIN_ANGLE3 -90.0
-#define MAX_ANGLE4 90.0
-#define MIN_ANGLE4 -90.0
+#define MAX_ANGLE4 25.0  // Arm
+#define MIN_ANGLE4 -90.0 // Arm
 
 typedef struct
 {
@@ -115,7 +115,7 @@ an axis value 0f 63 will ramp up the angle from 0 to 63 within 1s
                 float delta1 = (float)msg.angle_velocity_lx / RESOLUTION;
                 float delta2 = (float)msg.angle_velocity_ly / RESOLUTION;
                 float delta3 = (float)msg.angle_velocity_rx / RESOLUTION;
-                float delta4 = (float)msg.angle_velocity_ry / RESOLUTION;
+                float delta4 = (float)(0 - msg.angle_velocity_ry) / RESOLUTION; // reverse sign since motor is installed the other way around
 
                 // always just take the highest delta for one stick. This is to avoid controlling 2 servos on the same stick
                 if (abs(delta1) > abs(delta2))
@@ -128,11 +128,11 @@ an axis value 0f 63 will ramp up the angle from 0 to 63 within 1s
                 }
                 if (abs(delta3) > abs(delta4))
                 {
-                    delta3 = 0;
+                    delta4 = 0;
                 }
                 else
                 {
-                    delta4 = 0;
+                    delta3 = 0;
                 }
 
                 while (!uxQueueMessagesWaiting(xQueue))
@@ -177,12 +177,12 @@ an axis value 0f 63 will ramp up the angle from 0 to 63 within 1s
 
                     metrics.angle_rotator = angle1;
                     metrics.angle_boom = angle2;
-                    metrics.angle_arm = angle3;
-                    metrics.angle_grapple = angle4;
+                    metrics.angle_grapple = angle3;
+                    metrics.angle_arm = angle4;
                     servo_set_angle(&arm_boom_rotator, angle1);
                     servo_set_angle(&arm_boom, angle2);
-                    servo_set_angle(&arm_arm, angle3);
-                    servo_set_angle(&arm_grapple, angle4);
+                    servo_set_angle(&arm_grapple, angle3);
+                    servo_set_angle(&arm_arm, angle4);
 
                     vTaskDelay((1000 / RESOLUTION) / portTICK_PERIOD_MS);
                 }
@@ -197,8 +197,8 @@ void arm_init()
 
     servo_create(GPIO_ARM_SERVO1, &arm_boom_rotator);
     servo_create(GPIO_ARM_SERVO2, &arm_boom);
-    servo_create(GPIO_ARM_SERVO3, &arm_arm);
-    servo_create(GPIO_ARM_SERVO4, &arm_grapple);
+    servo_create(GPIO_ARM_SERVO3, &arm_grapple);
+    servo_create(GPIO_ARM_SERVO4, &arm_arm);
 
     // servo_set_angle(&arm_boom_rotator, 0);
     // servo_set_angle(&arm_boom, MAX_ANGLE2);
