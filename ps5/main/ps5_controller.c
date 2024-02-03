@@ -26,6 +26,8 @@ callback_t _callback_event = 0;
 callback_t _callback_connect = 0;
 callback_t _callback_disconnect = 0;
 
+ps5_output_report_t output_report = {0};
+
 ps5_t *ps5_get_data()
 {
   return &_data;
@@ -147,67 +149,117 @@ void ps5_try_pairing()
 }
 void ps5_disable_lightbar()
 {
-  ps5_output_report_t out = {0};
-  out.valid_flag2 = DS5_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE;
-  out.lightbar_setup = DS5_LIGHTBAR_SETUP_LIGHT_OUT;
+  output_report.valid_flag2 = DS5_FLAG2_LIGHTBAR_SETUP_CONTROL_ENABLE;
+  output_report.lightbar_setup = DS5_LIGHTBAR_SETUP_LIGHT_OUT;
 
-  ps5_send_output_report(&out);
+  ps5_send_output_report(&output_report);
 }
 
 void ps5_set_led(uint8_t r, uint8_t g, uint8_t b)
 {
-  ps5_output_report_t out = {
-      .lightbar_red = r,
-      .lightbar_green = g,
-      .lightbar_blue = b,
-      .valid_flag1 = DS5_FLAG1_LIGHTBAR,
-  };
+  ps5_output_report_t out = {0};
+  output_report.lightbar_red = r;
+  output_report.lightbar_green = g;
+  output_report.lightbar_blue = b;
+  output_report.valid_flag1 = DS5_FLAG1_LIGHTBAR;
 
-  ps5_send_output_report(&out);
+  ps5_send_output_report(&output_report);
 }
 
 void ps5_set_rumble(uint8_t small, uint8_t large)
 {
 
-  ps5_output_report_t out = {
-      .motor_right = small,
-      .motor_left = large,
-      .valid_flag0 = DS5_FLAG0_HAPTICS_SELECT | DS5_FLAG0_COMPATIBLE_VIBRATION,
-  };
-  ps5_send_output_report(&out);
+  output_report.motor_right = small;
+  output_report.motor_left = large;
+  output_report.valid_flag0 = DS5_FLAG0_HAPTICS_SELECT | DS5_FLAG0_COMPATIBLE_VIBRATION;
+  ps5_send_output_report(&output_report);
 }
 
-void ps5_trigger_effect(uint8_t side, uint8_t effect)
+void ps5_trigger_effect(uint8_t effect, uint8_t left, uint8_t right)
 {
-  ps5_output_report_t out = {0};
-  uint8_t *effect_p = 0;
-  if (side == 0)
-  {
-    effect_p = &out.left_trigger_motor_mode;
-    out.valid_flag0 = DS_OUTPUT_VALID_FLAG0_LEFT_TRIGGER_MOTOR_ENABLE;
-  }
-  else
-  {
-    effect_p = &out.right_trigger_motor_mode;
-    out.valid_flag0 = DS_OUTPUT_VALID_FLAG0_RIGHT_TRIGGER_MOTOR_ENABLE;
-  }
 
   if (effect == 0)
   {
-    effect_p[0] = 0x05;
+    if (right)
+    {
+      output_report.right_trigger_motor_mode = 0x05;
+    }
+    if (left)
+    {
+      output_report.left_trigger_motor_mode = 0x05;
+    }
   }
   else if (effect == 1)
   {
-    effect_p[0] = 0x21;
-    effect_p[1] = 0xFF;
-    effect_p[2] = 0x03;
-    effect_p[3] = 0xFF;
-    effect_p[4] = 0xFF;
-    effect_p[5] = 0xFF;
-    effect_p[6] = 0x3F;
+    if (right)
+    {
+      output_report.right_trigger_motor_mode = 0x21;
+      output_report.right_trigger_param[0] = 0xFF;
+      output_report.right_trigger_param[1] = 0x03;
+      output_report.right_trigger_param[2] = 0xFF;
+      output_report.right_trigger_param[3] = 0xFF;
+      output_report.right_trigger_param[4] = 0xFF;
+      output_report.right_trigger_param[5] = 0x3F;
+    }
+    if (left)
+    {
+      output_report.left_trigger_motor_mode = 0x21;
+      output_report.left_trigger_param[0] = 0xFF;
+      output_report.left_trigger_param[1] = 0x03;
+      output_report.left_trigger_param[2] = 0xFF;
+      output_report.left_trigger_param[3] = 0xFF;
+      output_report.left_trigger_param[4] = 0xFF;
+      output_report.left_trigger_param[5] = 0x3F;
+    }
+  }
+  else if (effect == 2)
+  {
+    if (right)
+    {
+      output_report.right_trigger_motor_mode = 0x26;
+      output_report.right_trigger_param[0] = 0xe0;
+      output_report.right_trigger_param[1] = 0x03;
+      output_report.right_trigger_param[2] = 0x00;
+      output_report.right_trigger_param[3] = 0x80;
+      output_report.right_trigger_param[4] = 0xFF;
+      output_report.right_trigger_param[5] = 0x3F;
+      output_report.right_trigger_param[6] = 0x00;
+      output_report.right_trigger_param[7] = 0x00;
+      output_report.right_trigger_param[8] = 0x1e;
+    }
+    if (left)
+    {
+      output_report.left_trigger_motor_mode = 0x26;
+      output_report.left_trigger_param[0] = 0xe0;
+      output_report.left_trigger_param[1] = 0x03;
+      output_report.left_trigger_param[2] = 0x00;
+      output_report.left_trigger_param[3] = 0x80;
+      output_report.left_trigger_param[4] = 0xFF;
+      output_report.left_trigger_param[5] = 0x3F;
+      output_report.left_trigger_param[6] = 0x00;
+      output_report.left_trigger_param[7] = 0x00;
+      output_report.left_trigger_param[8] = 0x1e;
+    }
+  }
+  if (left)
+  {
+    output_report.valid_flag0 |= DS_OUTPUT_VALID_FLAG0_LEFT_TRIGGER_MOTOR_ENABLE;
+  }
+  else
+  {
+    output_report.valid_flag0 &= ~DS_OUTPUT_VALID_FLAG0_LEFT_TRIGGER_MOTOR_ENABLE;
   }
 
-  ps5_send_output_report(&out);
+  if (right)
+  {
+    output_report.valid_flag0 |= DS_OUTPUT_VALID_FLAG0_RIGHT_TRIGGER_MOTOR_ENABLE;
+  }
+  else
+  {
+    output_report.valid_flag0 &= ~DS_OUTPUT_VALID_FLAG0_RIGHT_TRIGGER_MOTOR_ENABLE;
+  }
+
+  ps5_send_output_report(&output_report);
 }
 
 void ps5_setFlashRate(uint8_t onTime, uint8_t offTime)

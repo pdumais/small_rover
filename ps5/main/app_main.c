@@ -14,6 +14,7 @@
 #include "ps5_controller.h"
 #include "common/i2c.h"
 #include "common/deepsleep.h"
+#include <esp_timer.h>
 
 #define DUALSENSE_MAC "D0:BC:C1:EC:AD:AC"
 #define GPIO_CTRL_LED 5
@@ -24,6 +25,12 @@
 #define I2C_SLAVE_SCL_IO 22
 #define I2C_SLAVE_SDA_IO 23
 
+#define WRITE_BIT I2C_MASTER_WRITE /*!< I2C master write */
+#define READ_BIT I2C_MASTER_READ   /*!< I2C master read */
+#define ACK_CHECK_EN 0x1           /*!< I2C master will check ack from slave*/
+#define ACK_CHECK_DIS 0x0          /*!< I2C master will not check ack from slave */
+#define ACK_VAL 0x0                /*!< I2C ack value */
+#define NACK_VAL 0x1               /*!< I2C nack value */
 static const char *TAG = "ps5_main";
 static volatile ps5_t old_data = {0};
 
@@ -53,6 +60,7 @@ static esp_err_t i2c_init(void)
         .scl_io_num = I2C_SLAVE_SCL_IO,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 100000,
+        //.master.clk_speed = 10000,
         .clk_flags = 0,
     };
 
@@ -69,11 +77,6 @@ void set_checksum(ps5_t *data)
         c += ((uint8_t *)data)[i];
     }
     data->checksum = c;
-}
-
-void block_trigger(int side, bool state)
-{
-    ps5_trigger_effect(0, state ? 1 : 0);
 }
 
 void rumble(bool state)
@@ -93,12 +96,58 @@ void set_pad_led(uint8_t r, uint8_t g, uint8_t b)
     ps5_set_led(r, g, b);
 }
 
+static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint8_t *data_rd, size_t size)
+{
+    if (size == 0)
+    {
+        return ESP_OK;
+    }
+
+    uint8_t addr = 0;
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (ESP_SLAVE_ADDR << 1) | READ_BIT, ACK_CHECK_EN);
+    i2c_master_read_byte(cmd, data_rd, (i2c_ack_type_t)ACK_VAL);
+    i2c_master_read_byte(cmd, data_rd + 1, (i2c_ack_type_t)ACK_VAL);
+    i2c_master_read_byte(cmd, data_rd + 2, (i2c_ack_type_t)ACK_VAL);
+    i2c_master_read_byte(cmd, data_rd + 3, (i2c_ack_type_t)I2C_MASTER_LAST_NACK);
+    i2c_master_stop(cmd);
+    esp_err_t ret = i2c_master_cmd_begin(i2c_num, cmd, 10);
+    i2c_cmd_link_delete(cmd);
+
+    // When no data is available, it seems the buffer is filled with the read request and then 0xFF
+    // I could confirm that on the oscilloscope. I have no idea why that is the case.
+    // I would simply expect i2c_master_cmd_begin to timeout instead
+    if (data_rd[0] == ((ESP_SLAVE_ADDR << 1) | READ_BIT))
+    {
+        vTaskDelay(25 / portTICK_PERIOD_MS);
+        return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "%02X %02X %02X %02X", (int)data_rd[0], (int)data_rd[1], (int)data_rd[2], (int)data_rd[3]);
+    return ret;
+}
+
+static unsigned long millis()
+{
+    return (unsigned long)(esp_timer_get_time() / 1000ULL);
+}
+
 void ps5_check(void *arg)
 {
     bool was_connected = 0;
 
+    unsigned long current_millis = millis();
+    unsigned long turn_off_rumble_millis = 0;
+
     while (1)
     {
+        current_millis = millis();
+        if (turn_off_rumble_millis != 0 && turn_off_rumble_millis < current_millis)
+        {
+            ESP_LOGI(TAG, "UNSET RUMBLE %lu %lu", current_millis, turn_off_rumble_millis);
+            ps5_set_rumble(0, 0);
+            turn_off_rumble_millis = 0;
+        }
 
         if (!ps5_isConnected())
         {
@@ -160,24 +209,6 @@ void ps5_check(void *arg)
         if (has_changes)
         {
 
-            if (data->button.up)
-            {
-                ESP_LOGI(TAG, "Button UP");
-                block_trigger(0, true);
-            }
-            else
-            {
-                block_trigger(0, false);
-            }
-            /*if (data->button.down)
-            {
-                set_pad_led(0, 255, 0);
-            }
-            else
-            {
-                set_pad_led(0, 255, 255);
-            }*/
-
             ESP_LOGI(TAG, "PS5 Event");
 
             memcpy(&old_data, data, sizeof(ps5_t));
@@ -192,17 +223,30 @@ void ps5_check(void *arg)
                 if (err == ESP_ERR_INVALID_STATE)
                 {
                     ESP_LOGE(TAG, "i2c bus send: ESP_ERR_INVALID_STATE");
-                    /*//This is just temporary to help debug
-                    while (1)
-                    {
-                        vTaskDelay(1000 / portTICK_PERIOD_MS);
-                    } */
                 }
                 ESP_LOGE(TAG, "Error sending on i2c bus: %i", err);
             }
         }
 
-        vTaskDelay(50 / portTICK_PERIOD_MS); // Debounce
+        i2c_slave_message slave_msg = {0};
+        esp_err_t err = i2c_master_read_slave(I2C_MASTER_NUM, &slave_msg, sizeof(i2c_slave_message));
+        if (err == ESP_OK && slave_msg.command != 0)
+        {
+            if (slave_msg.command == 0x01)
+            {
+                ps5_set_led(slave_msg.data1, slave_msg.data2, slave_msg.data3);
+            }
+            else if (slave_msg.command == 0x02)
+            {
+                ps5_trigger_effect(slave_msg.data1, slave_msg.data2, slave_msg.data3);
+            }
+            else if (slave_msg.command == 0x03)
+            {
+                ps5_set_rumble(255, 255);
+                turn_off_rumble_millis = millis() + ((unsigned long)slave_msg.data1 * 1000ULL);
+                ESP_LOGI(TAG, "SET RUMBLE %lu %lu", current_millis, turn_off_rumble_millis);
+            }
+        }
     }
 }
 
@@ -238,7 +282,8 @@ void app_main(void)
     i_conf.pin_bit_mask |= (1ULL << GPIO_PAIR);
     i_conf.intr_type = GPIO_INTR_DISABLE;
     i_conf.mode = GPIO_MODE_INPUT;
-    i_conf.pull_up_en = 1;
+    i_conf.pull_up_en = 0;
+    i_conf.pull_down_en = 1;
     gpio_config(&i_conf);
 
     gpio_config_t o_conf = {};
@@ -254,7 +299,7 @@ void app_main(void)
     /* Initialize the event loop */
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    if (gpio_get_level(GPIO_PAIR) == 0)
+    if (gpio_get_level(GPIO_PAIR) == 1)
     {
         ESP_LOGI(TAG, "Waiting to pair");
         ps5_try_pairing();

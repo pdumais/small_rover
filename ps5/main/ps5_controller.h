@@ -10,7 +10,7 @@ bool ps5_isConnected();
 void ps5_try_pairing();
 void ps5_set_led(uint8_t r, uint8_t g, uint8_t b);
 void ps5_set_rumble(uint8_t small, uint8_t large);
-void ps5_trigger_effect(uint8_t side, uint8_t effect);
+void ps5_trigger_effect(uint8_t effect, uint8_t left, uint8_t right);
 
 void ps5_setFlashRate(uint8_t onTime, uint8_t offTime);
 void ps5_attach(callback_t callback);

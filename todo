@@ -4,16 +4,19 @@
         make Claw
         Add servo to rotate claw?
             weight of the claw would stress the servo shaft? Doesn't matter. I can try it without a bearing at first
-    Dualsense feedback
-        must be able to send events from main board to ps5 board
-        Obstacle: block trigger
-        Connected: white led
-        Recording/playing: red/green
-        Arm mode: blue, block triggers
-
 
 
 # Tasks
+    Re-assing LED ring
+        same as now for disconnected
+        while moving, flash proportional to speed
+            only 1 of 4 quarters in the direction of vehicle: left,right, straight from, straight back
+    i2c
+        I had to put a delay when transmitting 2 packets in a row from the slave. Also, master always reads something
+            when slave has nothing in FIFO. why is something being clocked out?
+
+    How to monitor battery level?
+
     Route recording
         record buffer is small. After the buffer is full, we should flush to flash
         after 100 events (or whatever it takes to create 3.5k, flush the page
@@ -29,19 +32,18 @@
             on stop: write last page with an empty "nextpage"
 
 
-
     PCB for mainboard
         4 DRV8871
         socket for ESP
         terminal headers
-        accelerometer
+        accelerometer / gyro
 
     Obstacle detection  
         Use IR range finder. Extend steering servo horn so that sensor rotates with steering
             Sharp GP2D12 only works for distances over 10cm. Under 10cm, we get a voltage curve that we cannot distinguish between a real reading over 10cm.
             Being too close would be interpreted as being too far. For example, 1.2v is either 36cm or 2cm
             So need to install the sensor 10cm inside the vehicle to make sure nothing  gets too close to the sensor
-        dualsense rumble when obstacle. or feedback on the throttle button
+        Or use bumper switches            
 
     Pointing device on small servo, controlled with up/down buttons on the left side of DS
 
