@@ -13,8 +13,8 @@
 #define MIN_ANGLE1 -30.0 // Base Rotation
 #define MAX_ANGLE2 54.0  // Boom
 #define MIN_ANGLE2 -10.0 // Boom
-#define MAX_ANGLE3 90.0
-#define MIN_ANGLE3 -90.0
+#define MAX_ANGLE3 50.0  // Grapple
+#define MIN_ANGLE3 6.0   // Grapple
 #define MAX_ANGLE4 25.0  // Arm
 #define MIN_ANGLE4 -90.0 // Arm
 

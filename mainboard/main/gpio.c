@@ -77,6 +77,7 @@ static mcpwm_cmpr_handle_t comparator_steering;
 
 static void send_to_i2c_master(i2c_slave_message *msg)
 {
+	/*
 	int res = i2c_slave_write_buffer(I2C_SLAVE_NUM, msg, sizeof(i2c_slave_message), 50 / portTICK_PERIOD_MS);
 	if (res != sizeof(i2c_slave_message))
 	{
@@ -87,6 +88,7 @@ static void send_to_i2c_master(i2c_slave_message *msg)
 	// bytes since the second packet is offset by 1. From what I understand, the master should have sent a NACK after the 4th byte,
 	// so why would another by be sent ?
 	vTaskDelay(50 / portTICK_PERIOD_MS);
+	*/
 }
 
 bool is_going_reverse(ps5_t *data)

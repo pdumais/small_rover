@@ -1,21 +1,17 @@
 
 # currently working on:
-    Arm
-        make Claw
-        Add servo to rotate claw?
-            weight of the claw would stress the servo shaft? Doesn't matter. I can try it without a bearing at first
-
+    Arm: 
+        use lock nuts
+        not all servos use the right direction, not like backhoe controls
+    Dualsense is flaky. Where is the problem? 
+        mainboard not receiving events?
+        FSM goes in bad state? (race condition?)
 
 # Tasks
     Re-assing LED ring
         same as now for disconnected
         while moving, flash proportional to speed
             only 1 of 4 quarters in the direction of vehicle: left,right, straight from, straight back
-    i2c
-        I had to put a delay when transmitting 2 packets in a row from the slave. Also, master always reads something
-            when slave has nothing in FIFO. why is something being clocked out?
-
-    How to monitor battery level?
 
     Route recording
         record buffer is small. After the buffer is full, we should flush to flash
@@ -31,13 +27,6 @@
             re-init buffer.
             on stop: write last page with an empty "nextpage"
 
-
-    PCB for mainboard
-        4 DRV8871
-        socket for ESP
-        terminal headers
-        accelerometer / gyro
-
     Obstacle detection  
         Use IR range finder. Extend steering servo horn so that sensor rotates with steering
             Sharp GP2D12 only works for distances over 10cm. Under 10cm, we get a voltage curve that we cannot distinguish between a real reading over 10cm.
@@ -46,6 +35,22 @@
         Or use bumper switches            
 
     Pointing device on small servo, controlled with up/down buttons on the left side of DS
+
+    i2c
+        I had to put a delay when transmitting 2 packets in a row from the slave. Also, master always reads something
+            when slave has nothing in FIFO. why is something being clocked out?
+            https://www.esp32.com/viewtopic.php?f=12&t=38167&sid=349447541ea635eb678a16e136298e94
+        Use SPI instead?
+
+
+    How to monitor battery level? Using a voltage divider on an analog pin?
+
+    PCB for mainboard
+        4 DRV8871
+        socket for ESP
+        terminal headers
+        accelerometer / gyro
+
 
     better frame
         cube. 50cm x 40cm
