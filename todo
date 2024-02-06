@@ -1,31 +1,8 @@
-
-# currently working on:
-    Arm: 
-        use lock nuts
-        not all servos use the right direction, not like backhoe controls
-    Dualsense is flaky. Where is the problem? 
-        mainboard not receiving events?
-        FSM goes in bad state? (race condition?)
-
 # Tasks
     Re-assing LED ring
-        same as now for disconnected
-        while moving, flash proportional to speed
-            only 1 of 4 quarters in the direction of vehicle: left,right, straight from, straight back
 
     Route recording
-        record buffer is small. After the buffer is full, we should flush to flash
-        after 100 events (or whatever it takes to create 3.5k, flush the page
-            struct page {
-                char nextkey[4]
-                record_data[100]
-                int record_count
-            }
-            use the last generated random key, or "record_data" if it's the first page
-            generate a new key, set that key as the "nextkey"
-            set the record_count.
-            re-init buffer.
-            on stop: write last page with an empty "nextpage"
+        record buffer is small. use SPIFFS
 
     Obstacle detection  
         Use IR range finder. Extend steering servo horn so that sensor rotates with steering
@@ -36,30 +13,16 @@
 
     Pointing device on small servo, controlled with up/down buttons on the left side of DS
 
-    i2c
-        I had to put a delay when transmitting 2 packets in a row from the slave. Also, master always reads something
-            when slave has nothing in FIFO. why is something being clocked out?
-            https://www.esp32.com/viewtopic.php?f=12&t=38167&sid=349447541ea635eb678a16e136298e94
-        Use SPI instead?
-
-
-    How to monitor battery level? Using a voltage divider on an analog pin?
 
     PCB for mainboard
         4 DRV8871
         socket for ESP
         terminal headers
         accelerometer / gyro
+        voltage divider on analog pin for battery level detection
 
 
-    better frame
-        cube. 50cm x 40cm
-        steering with ball joints
-        bumper switches to provide feedback on collisions
-
-        Power supply
-            Instead of being on main board, should be a separate unit that exposes a few cables for each components to use.
-            PS would sit on top of battery
+    Bumper switches to provide feedback on collisions
 
 
 

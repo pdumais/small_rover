@@ -13,8 +13,8 @@
 #define MIN_ANGLE1 -30.0 // Base Rotation
 #define MAX_ANGLE2 54.0  // Boom
 #define MIN_ANGLE2 -10.0 // Boom
-#define MAX_ANGLE3 50.0  // Grapple
-#define MIN_ANGLE3 6.0   // Grapple
+#define MAX_ANGLE3 30.0  // Grapple
+#define MIN_ANGLE3 -35.0 // Grapple
 #define MAX_ANGLE4 25.0  // Arm
 #define MIN_ANGLE4 -90.0 // Arm
 
@@ -112,10 +112,10 @@ an axis value 0f 63 will ramp up the angle from 0 to 63 within 1s
     so a speed of 6.3 per 100ms
 */
 #define RESOLUTION 20
-                float delta1 = (float)msg.angle_velocity_lx / RESOLUTION;
+                float delta1 = (float)(0 - msg.angle_velocity_lx) / RESOLUTION;
                 float delta2 = (float)msg.angle_velocity_ly / RESOLUTION;
                 float delta3 = (float)msg.angle_velocity_rx / RESOLUTION;
-                float delta4 = (float)(0 - msg.angle_velocity_ry) / RESOLUTION; // reverse sign since motor is installed the other way around
+                float delta4 = (float)(msg.angle_velocity_ry) / RESOLUTION; // reverse sign since motor is installed the other way around
 
                 // always just take the highest delta for one stick. This is to avoid controlling 2 servos on the same stick
                 if (abs(delta1) > abs(delta2))

@@ -6,7 +6,7 @@
 #include <esp_event_base.h>
 #include "gpio.h"
 #include "common.h"
-#include "driver/i2c.h"
+#include "driver/uart.h"
 #include "driver/ledc.h"
 #include "driver/pcnt.h"
 #include "led_sequence.h"
@@ -23,9 +23,6 @@
 #include "routerecorder.h"
 
 ESP_EVENT_DEFINE_BASE(GPIO_EVENT);
-#define I2C_SLAVE_NUM 0
-#define I2C_SLAVE_TX_BUF_LEN (100 * sizeof(i2c_slave_message))
-#define I2C_SLAVE_RX_BUF_LEN (4 * sizeof(ps5_t))
 
 #define PCNT_UNIT_MOTOR1 PCNT_UNIT_0
 #define PCNT_UNIT_MOTOR2 PCNT_UNIT_1
@@ -59,6 +56,7 @@ static uint16_t throttle_map_high[] = {0, 1019, 1614, 2037, 2365, 2633, 2860, 30
 static uint16_t *throttle_map;
 static TaskHandle_t ps5_task;
 static TaskHandle_t rpm_task;
+static QueueHandle_t uart_queue;
 
 typedef void (*state_processor_callback_t)(ps5_t *data, uint32_t old_state, uint32_t new_state);
 static state_processor_callback_t state_processor_callback;
@@ -75,20 +73,9 @@ static bool arm_activated = false;
 
 static mcpwm_cmpr_handle_t comparator_steering;
 
-static void send_to_i2c_master(i2c_slave_message *msg)
+static void send_to_uart(controller_message *msg)
 {
-	/*
-	int res = i2c_slave_write_buffer(I2C_SLAVE_NUM, msg, sizeof(i2c_slave_message), 50 / portTICK_PERIOD_MS);
-	if (res != sizeof(i2c_slave_message))
-	{
-		ESP_LOGE(TAG, "Error sending on i2c bus");
-	}
-
-	// TODO: Why do I need to delay? If sending 2 messages in a row, without this delay, the master seems to drop
-	// bytes since the second packet is offset by 1. From what I understand, the master should have sent a NACK after the 4th byte,
-	// so why would another by be sent ?
-	vTaskDelay(50 / portTICK_PERIOD_MS);
-	*/
+	uart_write_bytes(UART_NUM_2, msg, sizeof(controller_message));
 }
 
 bool is_going_reverse(ps5_t *data)
@@ -236,18 +223,18 @@ void on_enter_arm_mode()
 	arm_activated = true;
 	arm_enable(arm_activated);
 
-	i2c_slave_message msg = {1, 0, 0, 255};
-	send_to_i2c_master(&msg);
-	i2c_slave_message msg2 = {2, 1, 1, 1};
-	send_to_i2c_master(&msg2);
+	controller_message msg = {1, 0, 0, 255};
+	send_to_uart(&msg);
+	controller_message msg2 = {2, 1, 1, 1};
+	send_to_uart(&msg2);
 }
 
 void on_exit_arm_mode()
 {
 	arm_activated = false;
 	arm_enable(arm_activated);
-	i2c_slave_message msg = {2, 0, 1, 1};
-	send_to_i2c_master(&msg);
+	controller_message msg = {2, 0, 1, 1};
+	send_to_uart(&msg);
 }
 
 void on_enter_record_mode()
@@ -256,8 +243,8 @@ void on_enter_record_mode()
 	buzzer_set_off();
 	LED_SET_RECORDING_PATTERN();
 	state_processor_callback = &process_state_during_recording_mode;
-	i2c_slave_message msg = {1, 255, 0, 0};
-	send_to_i2c_master(&msg);
+	controller_message msg = {1, 255, 0, 0};
+	send_to_uart(&msg);
 }
 
 void on_exit_record_mode()
@@ -270,18 +257,18 @@ void on_enter_replay_mode()
 	buzzer_set_off();
 	LED_SET_REPLAY_PATTERN();
 	state_processor_callback = &process_state_during_replaying_mode;
-	i2c_slave_message msg = {1, 0, 255, 0};
-	send_to_i2c_master(&msg);
-	i2c_slave_message msg2 = {2, 1, 1, 1};
-	send_to_i2c_master(&msg2);
+	controller_message msg = {1, 0, 255, 0};
+	send_to_uart(&msg);
+	controller_message msg2 = {2, 1, 1, 1};
+	send_to_uart(&msg2);
 }
 
 void on_exit_replay_mode()
 {
-	i2c_slave_message msg = {2, 0, 1, 1};
-	send_to_i2c_master(&msg);
-	i2c_slave_message msg2 = {3, 1, 0, 0};
-	send_to_i2c_master(&msg2);
+	controller_message msg = {2, 0, 1, 1};
+	send_to_uart(&msg);
+	controller_message msg2 = {3, 1, 0, 0};
+	send_to_uart(&msg2);
 }
 
 void on_enter_driving_mode()
@@ -291,8 +278,8 @@ void on_enter_driving_mode()
 	buzzer_set_off();
 	LED_SET_IDLE_PATTERN();
 
-	i2c_slave_message msg = {1, 255, 255, 255};
-	send_to_i2c_master(&msg);
+	controller_message msg = {1, 255, 255, 255};
+	send_to_uart(&msg);
 
 	state_processor_callback = &process_state_during_driving_mode;
 }
@@ -372,13 +359,13 @@ void process_state_during_driving_mode(ps5_t *data, uint32_t current_state, uint
 		slow_mode = !slow_mode;
 		if (slow_mode)
 		{
-			i2c_slave_message msg = {2, 2, 1, 1};
-			send_to_i2c_master(&msg);
+			controller_message msg = {2, 2, 1, 1};
+			send_to_uart(&msg);
 		}
 		else
 		{
-			i2c_slave_message msg = {2, 0, 1, 1};
-			send_to_i2c_master(&msg);
+			controller_message msg = {2, 0, 1, 1};
+			send_to_uart(&msg);
 		}
 	}
 
@@ -598,10 +585,7 @@ void process_state(ps5_t *data)
 
 void poll_ps5(void *arg)
 {
-	uint8_t i2c_byte;
-	uint8_t addr = (ESP_SLAVE_ADDR << 1);
 	ps5_t data;
-	uint8_t opcode = 1;
 
 	while (1)
 	{
@@ -610,7 +594,7 @@ void poll_ps5(void *arg)
 		ps5_t data;
 		size_t s = sizeof(ps5_t);
 
-		size_t size = i2c_slave_read_buffer(I2C_SLAVE_NUM, &data, sizeof(ps5_t), 1000 / portTICK_PERIOD_MS);
+		size_t size = uart_read_bytes(UART_NUM_2, &data, s, 1000 / portTICK_PERIOD_MS);
 		if (size == s)
 		{
 
@@ -623,7 +607,7 @@ void poll_ps5(void *arg)
 			}
 			if (received_checksum != c)
 			{
-				ESP_LOGI(TAG, ">>>>>>>>>>>>>>>>>> I2C BAD CHECKSUM. RESETTING CONTROL %i/%i<<<<<<<<<<<<<<<<<<<<<", received_checksum, c);
+				ESP_LOGI(TAG, ">>>>>>>>>>>>>>>>>> Controller BAD CHECKSUM. RESETTING CONTROL %i/%i<<<<<<<<<<<<<<<<<<<<<", received_checksum, c);
 				memset(&data, 0, sizeof(ps5_t));
 				data.latestPacket = 1;
 				data.controller_connected = 1;
@@ -759,27 +743,31 @@ void on_start_sleep()
 	vTaskDelay(500 / portTICK_PERIOD_MS);
 }
 
+static void uart_init(void)
+{
+	ESP_LOGI(TAG, "uart_init");
+
+	ESP_ERROR_CHECK(uart_driver_install(UART_NUM_2, 1024, 0, 0, 0, 0));
+
+	const uart_port_t uart_num = UART_NUM_2;
+	uart_config_t uart_config = {
+		.baud_rate = 115200,
+		.data_bits = UART_DATA_8_BITS,
+		.parity = UART_PARITY_DISABLE,
+		.stop_bits = UART_STOP_BITS_1,
+		.flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+		.rx_flow_ctrl_thresh = 122};
+	ESP_ERROR_CHECK(uart_param_config(uart_num, &uart_config));
+	ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, UART_TX_PIN, UART_RX_PIN, -1, -1));
+}
+
 void dwn_gpio_init()
 {
 	throttle_map = &throttle_map_high;
 
 	init_deep_sleep(GPIO_SLEEP_BUTTON, on_start_sleep);
 
-	i2c_config_t conf_slave = {
-		.sda_io_num = GPIO_SDA,
-		.sda_pullup_en = GPIO_PULLUP_ENABLE,
-		.scl_io_num = GPIO_SCL,
-		.scl_pullup_en = GPIO_PULLUP_ENABLE,
-		.mode = I2C_MODE_SLAVE,
-		.slave.addr_10bit_en = 0,
-		.slave.slave_addr = ESP_SLAVE_ADDR,
-		.slave.maximum_speed = 100000,
-		.clk_flags = 0,
-	};
-
-	ESP_ERROR_CHECK(i2c_param_config(I2C_SLAVE_NUM, &conf_slave));
-	i2c_driver_install(I2C_SLAVE_NUM, conf_slave.mode, I2C_SLAVE_RX_BUF_LEN, I2C_SLAVE_TX_BUF_LEN, 0);
-
+	uart_init();
 	buzzer_init();
 	led_init();
 	servo_init();
