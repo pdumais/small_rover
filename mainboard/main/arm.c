@@ -89,9 +89,9 @@ void arm_task(void *arg)
 
     q_msg msg;
     float angle1 = 0;
-    float angle2 = 0;
-    float angle3 = 0;
-    float angle4 = 0;
+    float angle2 = MIN_ANGLE2;
+    float angle3 = MIN_ANGLE3;
+    float angle4 = MIN_ANGLE4;
 
     while (1)
     {
@@ -200,10 +200,10 @@ void arm_init()
     servo_create(GPIO_ARM_SERVO3, &arm_grapple);
     servo_create(GPIO_ARM_SERVO4, &arm_arm);
 
-    // servo_set_angle(&arm_boom_rotator, 0);
-    // servo_set_angle(&arm_boom, MAX_ANGLE2);
-    // servo_set_angle(&arm_arm, 0);
-    // servo_set_angle(&arm_grapple, 0);
+    servo_set_angle(&arm_boom_rotator, 0);
+    servo_set_angle(&arm_boom, MIN_ANGLE2);
+    servo_set_angle(&arm_arm, MIN_ANGLE4);
+    servo_set_angle(&arm_grapple, MIN_ANGLE3);
 
     xTaskCreate(arm_task, "arm_task", 4096, NULL, 5, NULL);
 }

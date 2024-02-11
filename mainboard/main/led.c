@@ -8,6 +8,7 @@
 #define COMMAND_STEADY_PATTERN 1
 #define COMMAND_FLASHING_PATTERN 2
 #define COMMAND_ROTATING_PATTERN 3
+#define COMMAND_ROTATING_RAINBOW 4
 
 typedef struct
 {
@@ -35,6 +36,83 @@ static const char *TAG = "led_c";
 const led_pattern led_pattern_rainbow = RAINBOW;
 const led_pattern led_pattern_red = LED_COLOR_RED;
 const led_pattern led_pattern_blue = LED_COLOR_BLUE;
+
+void LED_SET_IDLE_PATTERN()
+{
+    led_set_rotating_rainbow(25);
+}
+
+void LED_SET_ARM_PATTERN()
+{
+    led_pattern p = {0};
+    float r = 38;
+    float g = 74;
+    float b = 255;
+    for (int i = 0; i < LED_COUNT; i++)
+    {
+        r = r * 0.8;
+        g = g * 0.8;
+        b = b * 0.8;
+        p[i].r = r;
+        p[i].g = g;
+        p[i].b = b;
+    }
+    led_set_rotating_pattern(&p, 25, 1);
+}
+
+void LED_SET_AUTONOMOUS_PATTERN()
+{
+    led_pattern p = {0};
+    float r = 0;
+    float g = 74;
+    float b = 255;
+    for (int i = 0; i < LED_COUNT; i++)
+    {
+        r = r * 0.8;
+        g = g * 0.8;
+        b = b * 0.8;
+        p[i].r = r;
+        p[i].g = g;
+        p[i].b = b;
+    }
+    led_set_rotating_pattern(&p, 25, 1);
+}
+
+void LED_SET_RECORDING_PATTERN()
+{
+    led_pattern p = {0};
+    float r = 255;
+    float g = 122;
+    float b = 107;
+    for (int i = 0; i < LED_COUNT; i++)
+    {
+        r = r * 0.8;
+        g = g * 0.8;
+        b = b * 0.8;
+        p[i].r = r;
+        p[i].g = g;
+        p[i].b = b;
+    }
+    led_set_rotating_pattern(&p, 25, 1);
+}
+
+void LED_SET_REPLAY_PATTERN()
+{
+    led_pattern p = {0};
+    float r = 112;
+    float g = 155;
+    float b = 112;
+    for (int i = 0; i < LED_COUNT; i++)
+    {
+        r = r * 0.8;
+        g = g * 0.8;
+        b = b * 0.8;
+        p[i].r = r;
+        p[i].g = g;
+        p[i].b = b;
+    }
+    led_set_rotating_pattern(&p, 25, 1);
+}
 
 void led_set_led(uint8_t index, uint8_t r, uint8_t g, uint8_t b, uint8_t brightness)
 {
@@ -79,6 +157,14 @@ void led_set_rotating_pattern(led_pattern *p, uint32_t delay, uint8_t brightness
 
     q_msg msg;
     msg.command = COMMAND_ROTATING_PATTERN;
+    msg.data.rotate_cmd.delay = delay;
+    xQueueSend(xQueue, (void *)&msg, 0);
+}
+
+void led_set_rotating_rainbow(uint32_t delay)
+{
+    q_msg msg;
+    msg.command = COMMAND_ROTATING_RAINBOW;
     msg.data.rotate_cmd.delay = delay;
     xQueueSend(xQueue, (void *)&msg, 0);
 }
@@ -162,6 +248,37 @@ void led_task(void *arg)
                     if (offset >= LED_COUNT)
                     {
                         offset = 0;
+                    }
+                }
+            }
+            else if (msg.command == COMMAND_ROTATING_RAINBOW)
+            {
+                int offset = 0;
+                int h = 0;
+                int s = 110;
+                while (!uxQueueMessagesWaiting(xQueue))
+                {
+                    int n = offset;
+                    for (int i = 0; i < LED_COUNT; i++)
+                    {
+                        led_strip_set_pixel_hsv(led_strip, n, h, s, i * 4);
+                        n++;
+                        if (n >= LED_COUNT)
+                        {
+                            n = 0;
+                        }
+                    }
+                    led_strip_refresh(led_strip);
+                    vTaskDelay(msg.data.rotate_cmd.delay / portTICK_PERIOD_MS);
+                    offset++;
+                    if (offset >= LED_COUNT)
+                    {
+                        offset = 0;
+                    }
+                    h++;
+                    if (h > 360)
+                    {
+                        h = 0;
                     }
                 }
             }

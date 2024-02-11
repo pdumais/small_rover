@@ -7,7 +7,7 @@
 #include "wifi.h"
 #include <stdio.h>
 #include <stdbool.h>
-#include "gpio.h"
+#include "hardware.h"
 
 #define SAMPLE_LIST_COUNT 300
 static const char *TAG = "recorder_c";
@@ -61,6 +61,10 @@ void replay_task(void *arg)
         if (replay_cursor >= route_index)
         {
             broadcast_log("Stoping Replay mode. End of route\n");
+            queue_msg msg;
+            msg.type = MESSAGE_REPLAY_END;
+            hardware_send_message(&msg);
+
             replaying = false;
             replay_cursor = 0;
             vTaskSuspend(0);
@@ -128,6 +132,9 @@ void replay_stop()
         return;
     }
 
+    queue_msg msg;
+    msg.type = MESSAGE_REPLAY_END;
+    hardware_send_message(&msg);
     broadcast_log("Stoping Replay mode\n");
     replaying = false;
     xTaskAbortDelay(replay_task_h);

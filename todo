@@ -1,15 +1,15 @@
 # Tasks
-    Re-assing LED ring
-
-    Route recording
-        record buffer is small. use SPIFFS
-
-    Obstacle detection  
-        Use IR range finder. Extend steering servo horn so that sensor rotates with steering
-            Sharp GP2D12 only works for distances over 10cm. Under 10cm, we get a voltage curve that we cannot distinguish between a real reading over 10cm.
-            Being too close would be interpreted as being too far. For example, 1.2v is either 36cm or 2cm
-            So need to install the sensor 10cm inside the vehicle to make sure nothing  gets too close to the sensor
-        Or use bumper switches            
+    laser pointers
+    bumper switches
+    Obstacle detection 
+        do a continuous sweep 
+            when closest object is too close, turn steering to angle with fartest object
+            when fartest object is at angle 0, turn back wheels to 0
+        only activate servo while in autonomous mode or while driving
+        use 2 distance sensors?
+        mount on machine
+        make autonomous algorithm
+        on obstacle detection, stop turning servo and focus on that area until obstacle is not present anymore
 
     Pointing device on small servo, controlled with up/down buttons on the left side of DS
 
@@ -22,7 +22,6 @@
         voltage divider on analog pin for battery level detection
 
 
-    Bumper switches to provide feedback on collisions
 
 
 

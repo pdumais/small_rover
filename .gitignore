@@ -1,0 +1,8 @@
+.vscode
+mainboard/bt_debug
+mainboard/build/
+*.swp
+mainboard/managed_components/
+*.bin
+ps5/build/
+ps5/main/build/

@@ -9,7 +9,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include <netdb.h>
-#include "gpio.h"
+#include "hardware.h"
 #include "wifi.h"
 #include "led.h"
 #include "common.h"
@@ -73,7 +73,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 void start_ota_upgrade()
 {
     ESP_LOGI(TAG, "Starting OTA Upgrade");
-    gpio_suspend();
+    hardware_suspend();
 
     led_pattern p = LED_COLORFUL;
 

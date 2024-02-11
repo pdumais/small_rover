@@ -171,7 +171,7 @@ void ps5_check(void *arg)
         if (has_changes)
         {
 
-            ESP_LOGI(TAG, "PS5 Event");
+            ESP_LOGI(TAG, "PS5 Event. throttle: %i", data->analog.button.r2);
 
             memcpy(&old_data, data, sizeof(ps5_t));
             old_data.latestPacket = true;
