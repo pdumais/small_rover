@@ -156,11 +156,11 @@
 <text x="93.98" y="10.16" size="1.778" layer="51" align="bottom-right">scl</text>
 <text x="93.98" y="7.62" size="1.778" layer="51" align="bottom-right">gnd</text>
 <text x="93.98" y="5.08" size="1.778" layer="51" align="bottom-right">vcc</text>
-<wire x1="0" y1="35.56" x2="60.96" y2="35.56" width="0.1524" layer="51"/>
-<wire x1="60.96" y1="35.56" x2="60.96" y2="2.54" width="0.1524" layer="51"/>
-<wire x1="60.96" y1="2.54" x2="0" y2="2.54" width="0.1524" layer="51"/>
-<wire x1="0" y1="2.54" x2="0" y2="35.56" width="0.1524" layer="51"/>
-<text x="58.42" y="20.32" size="1.778" layer="121" rot="R90" align="bottom-right">22x11</text>
+<wire x1="2.54" y1="45.72" x2="63.5" y2="45.72" width="0.1524" layer="51"/>
+<wire x1="63.5" y1="45.72" x2="63.5" y2="12.7" width="0.1524" layer="51"/>
+<wire x1="63.5" y1="12.7" x2="2.54" y2="12.7" width="0.1524" layer="51"/>
+<wire x1="2.54" y1="12.7" x2="2.54" y2="45.72" width="0.1524" layer="51"/>
+<text x="60.96" y="30.48" size="1.778" layer="121" rot="R90" align="bottom-right">22x11</text>
 </plain>
 <libraries>
 <library name="pinhead" urn="urn:adsk.eagle:library:325">
@@ -1615,6 +1615,50 @@ type 0207, grid 10 mm</description>
 </package3d>
 </packages3d>
 </library>
+<library name="con-wago-500" urn="urn:adsk.eagle:library:195">
+<description>&lt;b&gt;Wago Screw Clamps&lt;/b&gt;&lt;p&gt;
+Grid 5.00 mm&lt;p&gt;
+&lt;author&gt;Created by librarian@cadsoft.de&lt;/author&gt;</description>
+<packages>
+<package name="W237-102" urn="urn:adsk.eagle:footprint:10676/1" library_version="2">
+<description>&lt;b&gt;WAGO SCREW CLAMP&lt;/b&gt;</description>
+<wire x1="-3.491" y1="-2.286" x2="-1.484" y2="-0.279" width="0.254" layer="51"/>
+<wire x1="1.488" y1="-2.261" x2="3.469" y2="-0.254" width="0.254" layer="51"/>
+<wire x1="-4.989" y1="-5.461" x2="4.993" y2="-5.461" width="0.1524" layer="21"/>
+<wire x1="4.993" y1="3.734" x2="4.993" y2="3.531" width="0.1524" layer="21"/>
+<wire x1="4.993" y1="3.734" x2="-4.989" y2="3.734" width="0.1524" layer="21"/>
+<wire x1="-4.989" y1="-5.461" x2="-4.989" y2="-3.073" width="0.1524" layer="21"/>
+<wire x1="-4.989" y1="-3.073" x2="-3.389" y2="-3.073" width="0.1524" layer="21"/>
+<wire x1="-3.389" y1="-3.073" x2="-1.611" y2="-3.073" width="0.1524" layer="51"/>
+<wire x1="-1.611" y1="-3.073" x2="1.615" y2="-3.073" width="0.1524" layer="21"/>
+<wire x1="3.393" y1="-3.073" x2="4.993" y2="-3.073" width="0.1524" layer="21"/>
+<wire x1="-4.989" y1="-3.073" x2="-4.989" y2="3.531" width="0.1524" layer="21"/>
+<wire x1="4.993" y1="-3.073" x2="4.993" y2="-5.461" width="0.1524" layer="21"/>
+<wire x1="-4.989" y1="3.531" x2="4.993" y2="3.531" width="0.1524" layer="21"/>
+<wire x1="-4.989" y1="3.531" x2="-4.989" y2="3.734" width="0.1524" layer="21"/>
+<wire x1="4.993" y1="3.531" x2="4.993" y2="-3.073" width="0.1524" layer="21"/>
+<wire x1="1.615" y1="-3.073" x2="3.393" y2="-3.073" width="0.1524" layer="51"/>
+<circle x="-2.5" y="-1.27" radius="1.4986" width="0.1524" layer="51"/>
+<circle x="-2.5" y="2.2098" radius="0.508" width="0.1524" layer="21"/>
+<circle x="2.5038" y="-1.27" radius="1.4986" width="0.1524" layer="51"/>
+<circle x="2.5038" y="2.2098" radius="0.508" width="0.1524" layer="21"/>
+<pad name="1" x="-2.5" y="-1.27" drill="1.1938" shape="long" rot="R90"/>
+<pad name="2" x="2.5" y="-1.27" drill="1.1938" shape="long" rot="R90"/>
+<text x="-5.04" y="-7.62" size="1.27" layer="27" ratio="10">&gt;VALUE</text>
+<text x="-3.8462" y="-5.0038" size="1.27" layer="25" ratio="10">&gt;NAME</text>
+<text x="-4.532" y="0.635" size="1.27" layer="21" ratio="10">1</text>
+<text x="0.421" y="0.635" size="1.27" layer="21" ratio="10">2</text>
+</package>
+</packages>
+<packages3d>
+<package3d name="W237-102" urn="urn:adsk.eagle:package:10688/1" type="box" library_version="2">
+<description>WAGO SCREW CLAMP</description>
+<packageinstances>
+<packageinstance name="W237-102"/>
+</packageinstances>
+</package3d>
+</packages3d>
+</library>
 </libraries>
 <attributes>
 </attributes>
@@ -1808,15 +1852,15 @@ design rules under a new name.</description>
 </pass>
 </autorouter>
 <elements>
-<element name="3.3V" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X22" package3d_urn="urn:adsk.eagle:package:22442/3" value="" x="30.48" y="5.08" smashed="yes">
-<attribute name="NAME" x="3.2512" y="7.5438" size="1.27" layer="25" ratio="10" rot="R90"/>
-<attribute name="POPULARITY" value="1" x="30.48" y="5.08" size="1.778" layer="27" display="off"/>
-<attribute name="VALUE" x="2.54" y="1.905" size="1.27" layer="27"/>
+<element name="3.3V" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X22" package3d_urn="urn:adsk.eagle:package:22442/3" value="" x="33.02" y="15.24" smashed="yes">
+<attribute name="NAME" x="5.7912" y="17.7038" size="1.27" layer="25" ratio="10" rot="R90"/>
+<attribute name="POPULARITY" value="1" x="33.02" y="15.24" size="1.778" layer="27" display="off"/>
+<attribute name="VALUE" x="5.08" y="12.065" size="1.27" layer="27"/>
 </element>
-<element name="GND" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X22" package3d_urn="urn:adsk.eagle:package:22442/3" value="" x="30.48" y="30.48" smashed="yes">
-<attribute name="NAME" x="3.2512" y="25.3238" size="1.27" layer="25" ratio="10" rot="R90"/>
-<attribute name="POPULARITY" value="1" x="30.48" y="30.48" size="1.778" layer="27" display="off"/>
-<attribute name="VALUE" x="2.54" y="27.305" size="1.27" layer="27"/>
+<element name="GND" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X22" package3d_urn="urn:adsk.eagle:package:22442/3" value="" x="33.02" y="40.64" smashed="yes">
+<attribute name="NAME" x="5.7912" y="35.4838" size="1.27" layer="25" ratio="10" rot="R90"/>
+<attribute name="POPULARITY" value="1" x="33.02" y="40.64" size="1.778" layer="27" display="off"/>
+<attribute name="VALUE" x="5.08" y="37.465" size="1.27" layer="27"/>
 </element>
 <element name="BME280" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X06" package3d_urn="urn:adsk.eagle:package:22472/2" value="" x="96.52" y="12.7" smashed="yes" rot="R270">
 <attribute name="NAME" x="86.2838" y="19.6088" size="1.27" layer="25" ratio="10"/>
@@ -1837,10 +1881,58 @@ design rules under a new name.</description>
 <attribute name="NAME" x="25.908" y="73.787" size="0.8128" layer="25" ratio="18"/>
 <attribute name="VALUE" x="25.908" y="73.025" size="0.4064" layer="27" ratio="10"/>
 </element>
+<element name="M1" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X06" package3d_urn="urn:adsk.eagle:package:22472/2" value="" x="2.54" y="66.04" smashed="yes" rot="R90">
+<attribute name="NAME" x="0.7112" y="58.3438" size="1.27" layer="25" ratio="10" rot="R90"/>
+<attribute name="POPULARITY" value="79" x="2.54" y="66.04" size="1.778" layer="27" rot="R90" display="off"/>
+<attribute name="VALUE" x="5.715" y="58.42" size="1.27" layer="27" rot="R90"/>
+</element>
+<element name="M2" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X06" package3d_urn="urn:adsk.eagle:package:22472/2" value="" x="88.9" y="76.2" smashed="yes">
+<attribute name="NAME" x="81.2038" y="78.0288" size="1.27" layer="25" ratio="10"/>
+<attribute name="POPULARITY" value="79" x="88.9" y="76.2" size="1.778" layer="27" display="off"/>
+<attribute name="VALUE" x="81.28" y="73.025" size="1.27" layer="27"/>
+</element>
+<element name="M3" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X06" package3d_urn="urn:adsk.eagle:package:22472/2" value="" x="71.12" y="7.62" smashed="yes">
+<attribute name="NAME" x="63.4238" y="9.4488" size="1.27" layer="25" ratio="10"/>
+<attribute name="POPULARITY" value="79" x="71.12" y="7.62" size="1.778" layer="27" display="off"/>
+<attribute name="VALUE" x="63.5" y="4.445" size="1.27" layer="27"/>
+</element>
+<element name="M4" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X06" package3d_urn="urn:adsk.eagle:package:22472/2" value="" x="71.12" y="2.54" smashed="yes">
+<attribute name="NAME" x="63.4238" y="4.3688" size="1.27" layer="25" ratio="10"/>
+<attribute name="POPULARITY" value="79" x="71.12" y="2.54" size="1.778" layer="27" display="off"/>
+<attribute name="VALUE" x="63.5" y="-0.635" size="1.27" layer="27"/>
+</element>
+<element name="X1" library="con-wago-500" library_urn="urn:adsk.eagle:library:195" package="W237-102" package3d_urn="urn:adsk.eagle:package:10688/1" value="" x="7.62" y="5.08" smashed="yes" rot="R180">
+<attribute name="MF" value="" x="7.62" y="5.08" size="1.778" layer="27" rot="R180" display="off"/>
+<attribute name="MPN" value="237-102" x="7.62" y="5.08" size="1.778" layer="27" rot="R180" display="off"/>
+<attribute name="NAME" x="14.0062" y="12.6238" size="1.27" layer="25" ratio="10" rot="R180"/>
+<attribute name="OC_FARNELL" value="unknown" x="7.62" y="5.08" size="1.778" layer="27" rot="R180" display="off"/>
+<attribute name="OC_NEWARK" value="70K9898" x="7.62" y="5.08" size="1.778" layer="27" rot="R180" display="off"/>
+<attribute name="POPULARITY" value="32" x="7.62" y="5.08" size="1.778" layer="27" rot="R180" display="off"/>
+<attribute name="VALUE" x="12.66" y="12.7" size="1.27" layer="27" ratio="10" rot="R180"/>
+</element>
+<element name="X2" library="con-wago-500" library_urn="urn:adsk.eagle:library:195" package="W237-102" package3d_urn="urn:adsk.eagle:package:10688/1" value="" x="-7.62" y="10.16" smashed="yes">
+<attribute name="MF" value="" x="-7.62" y="10.16" size="1.778" layer="27" display="off"/>
+<attribute name="MPN" value="237-102" x="-7.62" y="10.16" size="1.778" layer="27" display="off"/>
+<attribute name="NAME" x="-11.4662" y="5.1562" size="1.27" layer="25" ratio="10"/>
+<attribute name="OC_FARNELL" value="unknown" x="-7.62" y="10.16" size="1.778" layer="27" display="off"/>
+<attribute name="OC_NEWARK" value="70K9898" x="-7.62" y="10.16" size="1.778" layer="27" display="off"/>
+<attribute name="POPULARITY" value="32" x="-7.62" y="10.16" size="1.778" layer="27" display="off"/>
+<attribute name="VALUE" x="-12.66" y="2.54" size="1.27" layer="27" ratio="10"/>
+</element>
 </elements>
 <signals>
 <signal name="+5V">
 <contactref element="BME280" pad="6"/>
+<contactref element="M1" pad="4"/>
+<contactref element="M2" pad="4"/>
+<contactref element="M3" pad="4"/>
+<contactref element="M4" pad="4"/>
+<contactref element="X2" pad="1"/>
+<wire x1="96.52" y1="6.35" x2="90.17" y2="76.2" width="0" layer="19" extent="1-1"/>
+<wire x1="72.39" y1="7.62" x2="96.52" y2="6.35" width="0" layer="19" extent="1-1"/>
+<wire x1="72.39" y1="2.54" x2="72.39" y2="7.62" width="0" layer="19" extent="1-1"/>
+<wire x1="-10.12" y1="8.89" x2="72.39" y2="7.62" width="0" layer="19" extent="1-1"/>
+<wire x1="2.54" y1="67.31" x2="-10.12" y2="8.89" width="0" layer="19" extent="1-1"/>
 </signal>
 <signal name="GND">
 <contactref element="BME280" pad="5"/>
@@ -1865,24 +1957,86 @@ design rules under a new name.</description>
 <wire x1="10.16" y1="71.12" x2="22.098" y2="71.12" width="0.1524" layer="1"/>
 <wire x1="9.525" y1="73.995" x2="9.525" y2="72.235" width="0.1524" layer="1"/>
 <wire x1="9.525" y1="72.235" x2="9.16" y2="71.87" width="0.1524" layer="1"/>
-<wire x1="25.4" y1="66.04" x2="96.52" y2="8.89" width="0" layer="19" extent="1-1"/>
+<contactref element="M1" pad="3"/>
+<contactref element="M2" pad="3"/>
+<contactref element="M3" pad="3"/>
+<contactref element="M4" pad="3"/>
+<contactref element="X1" pad="2"/>
+<contactref element="X2" pad="2"/>
+<wire x1="25.4" y1="66.04" x2="87.63" y2="76.2" width="0" layer="19" extent="1-1"/>
 <wire x1="11.16" y1="71.87" x2="10.16" y2="71.12" width="0" layer="19" extent="1-1"/>
 <wire x1="11.16" y1="70.37" x2="10.16" y2="71.12" width="0" layer="19" extent="1-1"/>
 <wire x1="9.16" y1="71.87" x2="10.16" y2="71.12" width="0" layer="19" extent="1-1"/>
 <wire x1="9.16" y1="70.37" x2="10.16" y2="71.12" width="0" layer="19" extent="1-1"/>
-<wire x1="3.81" y1="30.48" x2="8.255" y2="68.245" width="0" layer="19" extent="1-1"/>
+<wire x1="2.54" y1="64.77" x2="8.255" y2="68.245" width="0" layer="19" extent="1-1"/>
+<wire x1="6.35" y1="40.64" x2="2.54" y2="64.77" width="0" layer="19" extent="1-1"/>
+<wire x1="-5.12" y1="8.89" x2="6.35" y2="40.64" width="0" layer="19" extent="1-1"/>
+<wire x1="5.12" y1="6.35" x2="-5.12" y2="8.89" width="0" layer="19" extent="1-1"/>
+<wire x1="69.85" y1="7.62" x2="5.12" y2="6.35" width="0" layer="19" extent="1-1"/>
+<wire x1="69.85" y1="2.54" x2="69.85" y2="7.62" width="0" layer="19" extent="1-1"/>
+<wire x1="96.52" y1="8.89" x2="69.85" y2="7.62" width="0" layer="19" extent="1-1"/>
 </signal>
 <signal name="+12V">
 <contactref element="U1" pad="5"/>
 <contactref element="C1" pad="+"/>
 <wire x1="12.065" y1="73.995" x2="18.207" y2="73.995" width="0.1524" layer="1"/>
 <wire x1="18.207" y1="73.995" x2="18.542" y2="73.66" width="0.1524" layer="1"/>
+<contactref element="X1" pad="1"/>
+<wire x1="10.12" y1="6.35" x2="12.065" y2="73.995" width="0" layer="19" extent="1-1"/>
 </signal>
 <signal name="N$9">
 <contactref element="U1" pad="4"/>
 <contactref element="R2" pad="1"/>
 <wire x1="15.24" y1="66.04" x2="14.27" y2="66.04" width="0.1524" layer="1"/>
 <wire x1="14.27" y1="66.04" x2="12.065" y2="68.245" width="0.1524" layer="1"/>
+</signal>
+<signal name="M1+">
+<contactref element="M1" pad="1"/>
+</signal>
+<signal name="M1-">
+<contactref element="M1" pad="2"/>
+</signal>
+<signal name="M1S1">
+<contactref element="M1" pad="5"/>
+</signal>
+<signal name="M1S2">
+<contactref element="M1" pad="6"/>
+</signal>
+<signal name="M2+">
+<contactref element="M2" pad="1"/>
+</signal>
+<signal name="M2-">
+<contactref element="M2" pad="2"/>
+</signal>
+<signal name="M2S1">
+<contactref element="M2" pad="5"/>
+</signal>
+<signal name="M2S2">
+<contactref element="M2" pad="6"/>
+</signal>
+<signal name="M3+">
+<contactref element="M3" pad="1"/>
+</signal>
+<signal name="M3-">
+<contactref element="M3" pad="2"/>
+</signal>
+<signal name="M3S1">
+<contactref element="M3" pad="5"/>
+</signal>
+<signal name="M3S2">
+<contactref element="M3" pad="6"/>
+</signal>
+<signal name="M4+">
+<contactref element="M4" pad="1"/>
+</signal>
+<signal name="M4-">
+<contactref element="M4" pad="2"/>
+</signal>
+<signal name="M4S1">
+<contactref element="M4" pad="5"/>
+</signal>
+<signal name="M4S2">
+<contactref element="M4" pad="6"/>
 </signal>
 </signals>
 <mfgpreviewcolors>
