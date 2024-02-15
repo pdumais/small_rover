@@ -5,16 +5,17 @@
 #include <esp_log.h>
 #include "driver/gpio.h"
 #include <rom/ets_sys.h>
+#include "wifi.h"
 
 static const char *TAG = "hcsr04_c";
 static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 static QueueHandle_t receive_queue;
-static rmt_symbol_word_t raw_symbols[64]; // 64 symbols should be sufficient for a standard NEC frame
+static rmt_symbol_word_t raw_symbols[1]; // 64 symbols should be sufficient for a standard NEC frame
 
 #define CM_US 10
 static rmt_receive_config_t receive_config = {
     .signal_range_min_ns = CM_US,
-    .signal_range_max_ns = 12000000,
+    .signal_range_max_ns = (25000000),
 };
 
 static bool rmt_rx_done_callback(rmt_channel_handle_t channel, const rmt_rx_done_event_data_t *edata, void *user_data)
@@ -31,10 +32,18 @@ uint16_t hcsr04_read(hcsr04_handle_t *h, uint32_t wait_time)
     // Go thru the whole list if there are more than one event
     if (rmt_receive(h->rx_channel, raw_symbols, sizeof(raw_symbols), &receive_config) == ESP_FAIL)
     {
-        return 0xFFFF;
+        broadcast_log("rmt_receive returned false\n");
+        return 0;
     }
-    if (xQueueReceive(receive_queue, &rx_data, wait_time / portTICK_PERIOD_MS))
+    if (xQueueReceive(receive_queue, &rx_data, wait_time / portTICK_PERIOD_MS) == pdTRUE)
     {
+        if (rx_data.received_symbols[0].duration0 < 58)
+        {
+            // TODO: we sometimes get 0 here. Why? Because of timeout?
+            char str[256];
+            sprintf(&str, "num=%i, duration0=%i, duration1=%i\n", rx_data.num_symbols, rx_data.received_symbols[0].duration0, rx_data.received_symbols[0].duration1);
+            broadcast_log(&str);
+        }
         return rx_data.received_symbols[0].duration0 / 58;
     }
 
@@ -43,8 +52,9 @@ uint16_t hcsr04_read(hcsr04_handle_t *h, uint32_t wait_time)
 
 void hcsr04_trigger(hcsr04_handle_t *h)
 {
+
     static const rmt_item32_t pulseRMT[] = {
-        {{{10, 1, 1000000, 0}}},
+        {{{10, 1, 1000, 0}}},
     };
     rmt_transmit_config_t tx_config = {
         .loop_count = 0,

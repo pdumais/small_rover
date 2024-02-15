@@ -7,3 +7,4 @@ void servo_init();
 void servo_start();
 void servo_create(uint8_t pin, mcpwm_cmpr_handle_t *comparator);
 void servo_set_angle(mcpwm_cmpr_handle_t *comparator, int angle);
+void servo_enable(mcpwm_cmpr_handle_t *comparator, bool on);

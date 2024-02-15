@@ -54,7 +54,8 @@ void replay_task(void *arg)
 
         sprintf(&str, "Replaying event at slot %i\n", replay_cursor);
         broadcast_log(&str);
-        process_throttle(route[replay_cursor].throttle, route[replay_cursor].direction);
+        set_throttle(route[replay_cursor].throttle, route[replay_cursor].direction);
+        process_throttle();
         process_steering(route[replay_cursor].steering_angle);
 
         replay_cursor++;

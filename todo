@@ -1,17 +1,7 @@
 # Tasks
-    laser pointers
-    bumper switches
     Obstacle detection 
-        do a continuous sweep 
-            when closest object is too close, turn steering to angle with fartest object
-            when fartest object is at angle 0, turn back wheels to 0
-        only activate servo while in autonomous mode or while driving
-        use 2 distance sensors?
-        mount on machine
-        make autonomous algorithm
-        on obstacle detection, stop turning servo and focus on that area until obstacle is not present anymore
-
-    Pointing device on small servo, controlled with up/down buttons on the left side of DS
+            
+        when entering driving mode, must check for obstruction and block trigger + rumble
 
 
     PCB for mainboard

@@ -20,9 +20,10 @@
 #include "servo.h"
 #include "arm.h"
 #include "routerecorder.h"
-#include "obstacles.h"
+#include "obstructions.h"
 #include "fsm.h"
 #include "uart.h"
+#include "laser.h"
 
 #define PCNT_UNIT_MOTOR1 PCNT_UNIT_0
 #define PCNT_UNIT_MOTOR2 PCNT_UNIT_1
@@ -41,9 +42,9 @@
 
 typedef struct
 {
-	int unit;
-	int motor_revolutions;
-	int motor_direction;
+    int unit;
+    int motor_revolutions;
+    int motor_direction;
 } motor_pcnt;
 
 static motor_pcnt motor1_pcnt = {PCNT_UNIT_MOTOR1, 0, 0};
@@ -78,140 +79,151 @@ metrics_t metrics = {0};
 
 static const char *TAG = "hardware_c";
 static bool arm_activated = false;
-
+static uint8_t current_throttle;
+static int8_t current_direction;
 static mcpwm_cmpr_handle_t comparator_steering;
 
 bool is_going_reverse(ps5_t *data)
 {
-	// We don't support braking for now (setting both directions high)
-	// We should though. But setting both pins to 1 instead of PWM
-	if (data->analog.button.r2)
-	{
-		return false;
-	}
-	else if (data->analog.button.l2)
-	{
-		return true;
-	}
+    // We don't support braking for now (setting both directions high)
+    // We should though. But setting both pins to 1 instead of PWM
+    if (data->analog.button.r2)
+    {
+        return false;
+    }
+    else if (data->analog.button.l2)
+    {
+        return true;
+    }
 
-	return false;
+    return false;
 }
 
 bool is_going_forward(ps5_t *data)
 {
-	if (data->analog.button.r2)
-	{
-		return true;
-	}
-	return false;
+    if (data->analog.button.r2)
+    {
+        return true;
+    }
+    return false;
 }
 
 void process_steering(int angle)
 {
-	metrics.steering_angle = angle;
-	servo_set_angle(&comparator_steering, angle);
+    metrics.steering_angle = angle;
+    servo_set_angle(&comparator_steering, angle);
 }
 
-void process_throttle(uint8_t t, int8_t direction)
+void set_throttle(uint8_t t, int8_t direction)
 {
+    current_throttle = t;
+    current_direction = direction;
+}
 
-	// PS5 controller returns an 8bit value that needs to be mapped to 13bit for the PWM unit
-	// I map this using a logarithmic curve rather than simply a linear map because at low values, the motor doesn't turn at all.
-	uint16_t throttle = throttle_map[t];
+void process_throttle()
+{
+    broadcast_log("process_throttle1\n");
 
-	if (direction == 1)
-	{
-		metrics.direction = 1;
-		metrics.throttle = t;
-		metrics.pwm = throttle;
-	}
-	else
-	{
-		metrics.direction = -1;
-		metrics.throttle = t;
-		metrics.pwm = throttle;
-	}
+    // PS5 controller returns an 8bit value that needs to be mapped to 13bit for the PWM unit
+    // I map this using a logarithmic curve rather than simply a linear map because at low values, the motor doesn't turn at all.
+    uint16_t throttle = throttle_map[current_throttle];
 
-	// TODO
-	// DC motor will briefly use 2 times the amount of stall current if it goes from one direction to the other.
-	// so we need to carefully ramp this down instead. I think LEDC has a transitioning mechanism that could be used for that
-	// ledc_set_fade_with_time(), ledc_set_fade_with_step(), ledc_set_fade()
+    if (current_direction == 1)
+    {
+        metrics.direction = 1;
+        metrics.throttle = current_throttle;
+        metrics.pwm = throttle;
+    }
+    else
+    {
+        metrics.direction = -1;
+        metrics.throttle = current_throttle;
+        metrics.pwm = throttle;
+    }
 
-	ESP_LOGI(TAG, "Throttle=%i (%i)", throttle, t);
-	if (direction == 1)
-	{
-		ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0));
-		ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
-		ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, throttle));
-		ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1));
-	}
-	else
-	{
-		ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0));
-		ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1));
-		ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, throttle));
-		ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
-	}
+    // TODO
+    // DC motor will briefly use 2 times the amount of stall current if it goes from one direction to the other.
+    // so we need to carefully ramp this down instead. I think LEDC has a transitioning mechanism that could be used for that
+    // ledc_set_fade_with_time(), ledc_set_fade_with_step(), ledc_set_fade()
+
+    if (current_direction == 1)
+    {
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0));
+        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, throttle));
+        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1));
+    }
+    else
+    {
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0));
+        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1));
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, throttle));
+        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
+    }
 }
 
 void report_metrics()
 {
-	broadcast_metric(&metrics);
+    broadcast_metric(&metrics);
 }
 
 void check_rpm(void *arg)
 {
-	// unsigned long last_rpm_check = (esp_timer_get_time() / 1000ULL);
-	while (1)
-	{
-		//  Check counter every second
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // unsigned long last_rpm_check = (esp_timer_get_time() / 1000ULL);
+    while (1)
+    {
+        //  Check counter every second
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-		uint16_t rpm1 = (motor1_pcnt.motor_revolutions * 60) >> 3; // divide by 8 because the PCNT is set the trigger events 8 times faster
-		uint16_t rpm2 = (motor2_pcnt.motor_revolutions * 60) >> 3; // divide by 8 because the PCNT is set the trigger events 8 times faster
-		uint16_t rpm3 = (motor3_pcnt.motor_revolutions * 60) >> 3; // divide by 8 because the PCNT is set the trigger events 8 times faster
-		uint16_t rpm4 = (motor4_pcnt.motor_revolutions * 60) >> 3; // divide by 8 because the PCNT is set the trigger events 8 times faster
+        uint16_t rpm1 = (motor1_pcnt.motor_revolutions * 60) >> 3; // divide by 8 because the PCNT is set the trigger events 8 times faster
+        uint16_t rpm2 = (motor2_pcnt.motor_revolutions * 60) >> 3; // divide by 8 because the PCNT is set the trigger events 8 times faster
+        uint16_t rpm3 = (motor3_pcnt.motor_revolutions * 60) >> 3; // divide by 8 because the PCNT is set the trigger events 8 times faster
+        uint16_t rpm4 = (motor4_pcnt.motor_revolutions * 60) >> 3; // divide by 8 because the PCNT is set the trigger events 8 times faster
 
-		// TODO: For some reason, the RPM reported is twice as higher than the rated value of my motor. Why? We'll just divide by 2 for the moment
-		metrics.rpm1 = rpm1 >> 1;
-		metrics.rpm2 = rpm2 >> 1;
-		metrics.rpm3 = rpm3 >> 1;
-		metrics.rpm4 = rpm4 >> 1;
+        // TODO: For some reason, the RPM reported is twice as higher than the rated value of my motor. Why? We'll just divide by 2 for the moment
+        metrics.rpm1 = rpm1 >> 1;
+        metrics.rpm2 = rpm2 >> 1;
+        metrics.rpm3 = rpm3 >> 1;
+        metrics.rpm4 = rpm4 >> 1;
 
-		portDISABLE_INTERRUPTS();
-		motor1_pcnt.motor_revolutions = 0;
-		motor2_pcnt.motor_revolutions = 0;
-		motor3_pcnt.motor_revolutions = 0;
-		motor4_pcnt.motor_revolutions = 0;
-		portENABLE_INTERRUPTS();
+        portDISABLE_INTERRUPTS();
+        motor1_pcnt.motor_revolutions = 0;
+        motor2_pcnt.motor_revolutions = 0;
+        motor3_pcnt.motor_revolutions = 0;
+        motor4_pcnt.motor_revolutions = 0;
+        portENABLE_INTERRUPTS();
 
-		uint16_t mm_per_minutes = ((metrics.rpm1 + metrics.rpm2 + metrics.rpm3 + metrics.rpm4) / 4) * WHEEL_SIZE_MM;
-		metrics.speed = mm_per_minutes / 1667; // should be 16670 but we will do fixed point maths to keep the decimal without using the FPU
-		report_metrics();
-	}
+        uint16_t mm_per_minutes = ((metrics.rpm1 + metrics.rpm2 + metrics.rpm3 + metrics.rpm4) / 4) * WHEEL_SIZE_MM;
+        metrics.speed = mm_per_minutes / 1667; // should be 16670 but we will do fixed point maths to keep the decimal without using the FPU
+        report_metrics();
+    }
 }
 
 static bool was(uint32_t old_state, uint32_t new_state, uint32_t bit)
 {
-	return ((old_state & (1 << bit)) && !(new_state & (1 << bit)));
+    return ((old_state & (1 << bit)) && !(new_state & (1 << bit)));
 }
 
 static bool is_now(uint32_t old_state, uint32_t new_state, uint32_t bit)
 {
-	return (!(old_state & (1 << bit)) && (new_state & (1 << bit)));
+    return (!(old_state & (1 << bit)) && (new_state & (1 << bit)));
 }
 
 static bool is(uint32_t new_state, uint32_t bit)
 {
-	return (new_state & (1 << bit));
+    return (new_state & (1 << bit));
 }
 
 void on_enter_disconnected_mode()
 {
-	metrics.horn = 0;
-	buzzer_set_off();
-	LED_SET_DISCONNECTED_PATTERN();
-	fsm_current_state = &fsm_state_disconnected;
+    metrics.horn = 0;
+    obstruction_enable_sweep(false);
+    buzzer_set_off();
+    LED_SET_DISCONNECTED_PATTERN();
+    laser_trigger(false);
+    laser_set_position(0, 0);
+
+    fsm_current_state = &fsm_state_disconnected;
 }
 
 void on_exit_disconnected_mode()
@@ -220,34 +232,42 @@ void on_exit_disconnected_mode()
 
 void on_enter_arm_mode()
 {
-	LED_SET_ARM_PATTERN();
-	fsm_current_state = &fsm_state_arm;
-	process_throttle(0, 0); // Stop moving
-	arm_activated = true;
-	arm_enable(arm_activated);
+    obstruction_enable_sweep(false);
+    laser_trigger(false);
+    laser_set_position(0, 0);
 
-	controller_message msg = {1, 0, 0, 255};
-	send_to_uart(&msg);
-	controller_message msg2 = {2, 1, 1, 1};
-	send_to_uart(&msg2);
+    LED_SET_ARM_PATTERN();
+    fsm_current_state = &fsm_state_arm;
+    set_throttle(0, 0); // Stop moving
+    arm_activated = true;
+    arm_enable(arm_activated);
+
+    controller_message msg = {1, 0, 0, 255};
+    send_to_uart(&msg);
+    controller_message msg2 = {2, 1, 1, 1};
+    send_to_uart(&msg2);
 }
 
 void on_exit_arm_mode()
 {
-	arm_activated = false;
-	arm_enable(arm_activated);
-	controller_message msg = {2, 0, 1, 1};
-	send_to_uart(&msg);
+    arm_activated = false;
+    arm_enable(arm_activated);
+    controller_message msg = {2, 0, 1, 1};
+    send_to_uart(&msg);
 }
 
 void on_enter_record_mode()
 {
-	metrics.horn = 0;
-	buzzer_set_off();
-	LED_SET_RECORDING_PATTERN();
-	fsm_current_state = &fsm_state_recording;
-	controller_message msg = {1, 255, 0, 0};
-	send_to_uart(&msg);
+    obstruction_enable_sweep(false);
+    laser_trigger(false);
+    laser_set_position(0, 0);
+
+    metrics.horn = 0;
+    buzzer_set_off();
+    LED_SET_RECORDING_PATTERN();
+    fsm_current_state = &fsm_state_recording;
+    controller_message msg = {1, 255, 0, 0};
+    send_to_uart(&msg);
 }
 
 void on_exit_record_mode()
@@ -256,389 +276,433 @@ void on_exit_record_mode()
 
 void on_enter_replay_mode()
 {
-	metrics.horn = 0;
-	buzzer_set_off();
-	LED_SET_REPLAY_PATTERN();
-	fsm_current_state = &fsm_state_replaying;
-	controller_message msg = {1, 0, 255, 0};
-	send_to_uart(&msg);
-	controller_message msg2 = {2, 1, 1, 1};
-	send_to_uart(&msg2);
+    obstruction_enable_sweep(false);
+    laser_trigger(false);
+    laser_set_position(0, 0);
+
+    metrics.horn = 0;
+    buzzer_set_off();
+    LED_SET_REPLAY_PATTERN();
+    fsm_current_state = &fsm_state_replaying;
+    controller_message msg = {1, 0, 255, 0};
+    send_to_uart(&msg);
+    controller_message msg2 = {2, 1, 1, 1};
+    send_to_uart(&msg2);
 }
 
 void on_exit_replay_mode()
 {
-	controller_message msg = {2, 0, 1, 1};
-	send_to_uart(&msg);
-	controller_message msg2 = {3, 1, 0, 0};
-	send_to_uart(&msg2);
+    controller_message msg = {2, 0, 1, 1};
+    send_to_uart(&msg);
+    controller_message msg2 = {3, 1, 0, 0};
+    send_to_uart(&msg2);
 }
 
 void on_enter_driving_mode()
 {
 
-	metrics.horn = 0;
-	buzzer_set_off();
-	LED_SET_IDLE_PATTERN();
+    obstruction_enable_sweep(true);
+    laser_trigger(false);
+    laser_set_position(0, 0);
 
-	controller_message msg = {1, 255, 255, 255};
-	send_to_uart(&msg);
+    metrics.horn = 0;
+    buzzer_set_off();
+    LED_SET_IDLE_PATTERN();
 
-	fsm_current_state = &fsm_state_driving;
+    controller_message msg = {1, 255, 255, 255};
+    send_to_uart(&msg);
+
+    fsm_current_state = &fsm_state_driving;
 }
 
 void on_exit_driving_mode()
 {
+    laser_trigger(false);
+    obstruction_enable_sweep(false);
 }
 
 void on_enter_autonomous_mode()
 {
-	LED_SET_AUTONOMOUS_PATTERN();
-	fsm_current_state = &fsm_state_autonomous;
+    LED_SET_AUTONOMOUS_PATTERN();
+    fsm_current_state = &fsm_state_autonomous;
 
-	process_throttle(30, 0); // Start moving
+    laser_trigger(false);
+    laser_set_position(0, 0);
 
-	controller_message msg = {1, 0, 255, 255};
-	send_to_uart(&msg);
-	controller_message msg2 = {2, 1, 1, 1};
-	send_to_uart(&msg2);
+    set_throttle(30, 0); // Start moving
+
+    controller_message msg = {1, 0, 255, 255};
+    send_to_uart(&msg);
+    controller_message msg2 = {2, 1, 1, 1};
+    send_to_uart(&msg2);
 }
 
 void on_exit_autonomous_mode()
 {
-	process_throttle(0, 0); // Stop moving
-							// TODO: abort scan
+    set_throttle(0, 0); // Stop moving
+                        // TODO: abort scan
 }
 
 void process_state_during_disconnected_mode(uint8_t type, void *d, uint32_t old_state, uint32_t new_state)
 {
-	if (type != MESSAGE_PS5)
-	{
-		// This state does not need to do periodic checks
-		return;
-	}
+    if (type != MESSAGE_PS5)
+    {
+        // This state does not need to do periodic checks
+        return;
+    }
 
-	// Any incoming packet would trigger the connected state
-	// if (is(new_state, STATE_CONTROLLER_CONNECTED))
-	{
-		on_exit_disconnected_mode();
-		on_enter_driving_mode();
-		return;
-	}
+    // Any incoming packet would trigger the connected state
+    // if (is(new_state, STATE_CONTROLLER_CONNECTED))
+    {
+        on_exit_disconnected_mode();
+        on_enter_driving_mode();
+        return;
+    }
 }
 
 void process_state_during_autonomous_mode(uint8_t type, void *d, uint32_t current_state, uint32_t new_state)
 {
-	if (type == MESSAGE_PS5)
-	{
-		if (is_now(current_state, new_state, STATE_BIT_AUTO))
-		{
-			on_exit_autonomous_mode();
-			on_enter_driving_mode();
-			return;
-		}
+    if (type == MESSAGE_PS5)
+    {
+        if (is_now(current_state, new_state, STATE_BIT_AUTO))
+        {
+            on_exit_autonomous_mode();
+            on_enter_driving_mode();
+            return;
+        }
 
-		return;
-	}
+        return;
+    }
 
-	// TODO: on obstacle event, start a sweep and take a decision
+    // TODO: on obstruction event, start a sweep and take a decision
 }
 
 void process_state_during_driving_mode(uint8_t type, void *d, uint32_t current_state, uint32_t new_state)
 {
-	static bool slow_mode = false;
+    if (type == MESSAGE_COLLISION)
+    {
+        broadcast_log("Detected collision while driving\n");
+        controller_message msg2 = {3, 1, 0, 0}; // rumble
+        send_to_uart(&msg2);
+        set_throttle(0, 0);
+        return;
+    }
 
-	if (type != MESSAGE_PS5)
-	{
-		// This state does not need to do periodic checks
-		return;
-	}
+    if (type == MESSAGE_OBSTRUCTION_DETECTED)
+    {
+        broadcast_log("obstruction detected while driving\n");
+        controller_message msg = {2, 1, 0, 1}; // lock forward buttons
+        send_to_uart(&msg);
+        controller_message msg2 = {3, 1, 0, 0}; // rumble
+        send_to_uart(&msg2);
+        set_throttle(0, 0);
+        return;
+    }
 
-	ps5_t *data = d;
+    if (type == MESSAGE_OBSTRUCTION_CLEARED)
+    {
+        broadcast_log("obstruction cleared while driving\n");
+        controller_message msg = {2, 0, 1, 1}; // unlock buttons
+        send_to_uart(&msg);
+        set_throttle(0, 0);
+        return;
+    }
 
-	if (was(current_state, new_state, STATE_CONTROLLER_CONNECTED))
-	{
-		on_exit_driving_mode();
-		on_enter_disconnected_mode();
-		return;
-	}
+    if (type != MESSAGE_PS5)
+    {
+        return;
+    }
 
-	// Entering "record" mode
-	if (is_now(current_state, new_state, STATE_BIT_RECORD))
-	{
-		record_toggle_record();
-		if (record_is_recording())
-		{
-			on_exit_driving_mode();
-			on_enter_record_mode();
-			return;
-		}
-	}
+    ps5_t *data = d;
 
-	// Entering "replay" mode
-	if (is_now(current_state, new_state, STATE_BIT_REPLAY))
-	{
-		record_toggle_replay();
-		if (record_is_replaying())
-		{
-			on_exit_driving_mode();
-			on_enter_replay_mode();
-			return;
-		}
-	}
+    if (was(current_state, new_state, STATE_CONTROLLER_CONNECTED))
+    {
+        on_exit_driving_mode();
+        on_enter_disconnected_mode();
+        return;
+    }
 
-	// Entering "arm" mode
-	if (is_now(current_state, new_state, STATE_BIT_CROSS))
-	{
-		on_exit_driving_mode();
-		on_enter_arm_mode();
-		return;
-	}
+    // Entering "record" mode
+    if (is_now(current_state, new_state, STATE_BIT_RECORD))
+    {
+        record_toggle_record();
+        if (record_is_recording())
+        {
+            on_exit_driving_mode();
+            on_enter_record_mode();
+            return;
+        }
+    }
 
-	if (is_now(current_state, new_state, STATE_BIT_AUTO))
-	{
-		on_exit_driving_mode();
-		on_enter_autonomous_mode();
-		return;
-	}
+    // Entering "replay" mode
+    if (is_now(current_state, new_state, STATE_BIT_REPLAY))
+    {
+        record_toggle_replay();
+        if (record_is_replaying())
+        {
+            on_exit_driving_mode();
+            on_enter_replay_mode();
+            return;
+        }
+    }
 
-	if (is_now(current_state, new_state, STATE_BIT_R3)) // Toggle between fast/slow throttle
-	{
-		slow_mode = !slow_mode;
-		if (slow_mode)
-		{
-			controller_message msg = {2, 2, 1, 1};
-			send_to_uart(&msg);
-		}
-		else
-		{
-			controller_message msg = {2, 0, 1, 1};
-			send_to_uart(&msg);
-		}
-	}
+    // Entering "arm" mode
+    if (is_now(current_state, new_state, STATE_BIT_CROSS))
+    {
+        on_exit_driving_mode();
+        on_enter_arm_mode();
+        return;
+    }
 
-	if (is_now(current_state, new_state, STATE_BIT_HORN))
-	{
-		// only do this after the transition
-		metrics.horn = 1;
-		buzzer_set_intermitent(100, 100); // Anything below 100 should probably use the hardware PWM instead
-	}
-	else if (was(current_state, new_state, STATE_BIT_HORN))
-	{
-		metrics.horn = 0;
-		if (is(new_state, STATE_BIT_REVERSE))
-		{
-			buzzer_set_intermitent(1000, 500);
-		}
-		else
-		{
-			buzzer_set_off();
-		}
-	}
+    if (is_now(current_state, new_state, STATE_BIT_AUTO))
+    {
+        on_exit_driving_mode();
+        on_enter_autonomous_mode();
+        return;
+    }
 
-	if (is_now(current_state, new_state, STATE_BIT_LED))
-	{
-		LED_SET_ATTENTION_PATTERN();
-	}
-	else if (was(current_state, new_state, STATE_BIT_LED))
-	{
-		if (is(new_state, STATE_BIT_REVERSE))
-		{
-			LED_SET_REVERSE_PATTERN();
-		}
-		else
-		{
-			LED_SET_IDLE_PATTERN();
-		}
-	}
+    if (is_now(current_state, new_state, STATE_BIT_R3)) // Toggle between fast/slow throttle
+    {
+        laser_trigger(!laser_is_triggered());
+    }
 
-	if (is_now(current_state, new_state, STATE_BIT_REVERSE))
-	{
-		if (!is(new_state, STATE_BIT_LED))
-		{
-			LED_SET_REVERSE_PATTERN();
-		}
-		if (!is(new_state, STATE_BIT_HORN))
-		{
-			buzzer_set_intermitent(1000, 500);
-		}
-	}
-	else if (was(current_state, new_state, STATE_BIT_REVERSE))
-	{
-		if (is(new_state, STATE_BIT_HORN))
-		{
-			// Don't do anything, because horn is already overriding the reverse chime
-		}
-		else
-		{
-			buzzer_set_off();
-		}
+    if (is_now(current_state, new_state, STATE_BIT_HORN))
+    {
+        // only do this after the transition
+        metrics.horn = 1;
+        buzzer_set_intermitent(100, 100); // Anything below 100 should probably use the hardware PWM instead
+    }
+    else if (was(current_state, new_state, STATE_BIT_HORN))
+    {
+        metrics.horn = 0;
+        if (is(new_state, STATE_BIT_REVERSE))
+        {
+            buzzer_set_intermitent(1000, 500);
+        }
+        else
+        {
+            buzzer_set_off();
+        }
+    }
 
-		if (is(new_state, STATE_BIT_LED))
-		{
-			// Don't do anything, because horn is already overriding the reverse chime
-		}
-		else
-		{
-			LED_SET_IDLE_PATTERN();
-		}
-	}
+    if (is_now(current_state, new_state, STATE_BIT_LED))
+    {
+        LED_SET_ATTENTION_PATTERN();
+    }
+    else if (was(current_state, new_state, STATE_BIT_LED))
+    {
+        if (is(new_state, STATE_BIT_REVERSE))
+        {
+            LED_SET_REVERSE_PATTERN();
+        }
+        else
+        {
+            LED_SET_IDLE_PATTERN();
+        }
+    }
 
-	// we want an angle between -31 to 32 and we have a number from -127 to 128
-	int angle = data->analog.stick.lx >> 2;
-	bool reverse = is_going_reverse(data);
-	process_throttle(reverse ? data->analog.button.l2 : data->analog.button.r2, !reverse);
-	process_steering(angle);
+    if (is_now(current_state, new_state, STATE_BIT_REVERSE))
+    {
+        if (!is(new_state, STATE_BIT_LED))
+        {
+            LED_SET_REVERSE_PATTERN();
+        }
+        if (!is(new_state, STATE_BIT_HORN))
+        {
+            buzzer_set_intermitent(1000, 500);
+        }
+    }
+    else if (was(current_state, new_state, STATE_BIT_REVERSE))
+    {
+        if (is(new_state, STATE_BIT_HORN))
+        {
+            // Don't do anything, because horn is already overriding the reverse chime
+        }
+        else
+        {
+            buzzer_set_off();
+        }
+
+        if (is(new_state, STATE_BIT_LED))
+        {
+            // Don't do anything, because horn is already overriding the reverse chime
+        }
+        else
+        {
+            LED_SET_IDLE_PATTERN();
+        }
+    }
+
+    // we want an angle between -31 to 32 and we have a number from -127 to 128
+    int angle = data->analog.stick.lx >> 2;
+    bool reverse = is_going_reverse(data);
+
+    laser_set_position(data->analog.stick.rx, data->analog.stick.ry);
+
+    int col = obstruction_get_colision_status();
+    if (col & COLLISION_FRONT && !reverse)
+    {
+        set_throttle(0, 0);
+    }
+    else if (col & COLLISION_REAR && reverse)
+    {
+        set_throttle(0, 0);
+    }
+    else if (obstruction_is_too_close() && !reverse)
+    {
+        broadcast_log("Setting throttle to 0 while object is too close\n");
+        set_throttle(0, 0);
+    }
+    else
+    {
+        set_throttle(reverse ? data->analog.button.l2 : data->analog.button.r2, !reverse);
+    }
+    process_steering(angle);
 }
 
 void process_state_during_recording_mode(uint8_t type, void *d, uint32_t current_state, uint32_t new_state)
 {
-	if (type != MESSAGE_PS5)
-	{
-		// This state does not need to do periodic checks
-		return;
-	}
+    if (type != MESSAGE_PS5)
+    {
+        return;
+    }
 
-	if (was(current_state, new_state, STATE_CONTROLLER_CONNECTED))
-	{
-		on_exit_record_mode();
-		on_enter_disconnected_mode();
-		return;
-	}
+    if (was(current_state, new_state, STATE_CONTROLLER_CONNECTED))
+    {
+        on_exit_record_mode();
+        on_enter_disconnected_mode();
+        return;
+    }
 
-	if (is_now(current_state, new_state, STATE_BIT_RECORD))
-	{
-		record_toggle_record();
-		if (!record_is_recording())
-		{
-			// TODO: we can also exit record mode after buffer is full
-			on_exit_record_mode();
-			on_enter_driving_mode();
-			return;
-		}
-	}
+    if (is_now(current_state, new_state, STATE_BIT_RECORD))
+    {
+        record_toggle_record();
+        if (!record_is_recording())
+        {
+            on_exit_record_mode();
+            on_enter_driving_mode();
+            return;
+        }
+    }
 
-	ps5_t *data = d;
-	// we want an angle between -31 to 32 and we have a number from -127 to 128
-	int angle = data->analog.stick.lx >> 2;
-	bool reverse = is_going_reverse(data);
-	process_throttle(reverse ? data->analog.button.l2 : data->analog.button.r2, !reverse);
-	process_steering(angle);
+    ps5_t *data = d;
+    // we want an angle between -31 to 32 and we have a number from -127 to 128
+    int angle = data->analog.stick.lx >> 2;
+    bool reverse = is_going_reverse(data);
+    set_throttle(reverse ? data->analog.button.l2 : data->analog.button.r2, !reverse);
+    process_steering(angle);
+    record_process(&metrics);
 
-	record_process(&metrics);
-
-	// Check if still recording. It's possible it was terminated because the buffer was full
-	if (!record_is_recording())
-	{
-		on_exit_record_mode();
-		on_enter_driving_mode();
-		return;
-	}
+    // Check if still recording. It's possible it was terminated because the buffer was full
+    if (!record_is_recording())
+    {
+        on_exit_record_mode();
+        on_enter_driving_mode();
+        return;
+    }
 }
 
 void process_state_during_replaying_mode(uint8_t type, void *d, uint32_t current_state, uint32_t new_state)
 {
-	if (type == MESSAGE_REPLAY_END)
-	{
-		// Periodic check to see if we're still replaying
-		if (!record_is_replaying())
-		{
-			on_exit_replay_mode();
-			on_enter_driving_mode();
-		}
-		return;
-	}
+    if (type == MESSAGE_REPLAY_END)
+    {
+        // Periodic check to see if we're still replaying
+        if (!record_is_replaying())
+        {
+            on_exit_replay_mode();
+            on_enter_driving_mode();
+        }
+        return;
+    }
 
-	if (type != MESSAGE_PS5)
-	{
-		return;
-	}
+    if (type != MESSAGE_PS5)
+    {
+        return;
+    }
 
-	if (was(current_state, new_state, STATE_CONTROLLER_CONNECTED))
-	{
-		on_exit_replay_mode();
-		on_enter_disconnected_mode();
-		return;
-	}
+    if (was(current_state, new_state, STATE_CONTROLLER_CONNECTED))
+    {
+        on_exit_replay_mode();
+        on_enter_disconnected_mode();
+        return;
+    }
 
-	// Stop replaying
-	if (is_now(current_state, new_state, STATE_BIT_REPLAY))
-	{
-		record_toggle_replay();
-		if (!record_is_replaying())
-		{
-			on_exit_replay_mode();
-			on_enter_driving_mode();
-			return;
-		}
-	}
+    // Stop replaying
+    if (is_now(current_state, new_state, STATE_BIT_REPLAY))
+    {
+        record_toggle_replay();
+        if (!record_is_replaying())
+        {
+            on_exit_replay_mode();
+            on_enter_driving_mode();
+            return;
+        }
+    }
 }
 
 void process_state_during_arm_mode(uint8_t type, void *d, uint32_t current_state, uint32_t new_state)
 {
-	if (type != MESSAGE_PS5)
-	{
-		// This state does not need to do periodic checks
-		return;
-	}
+    if (type != MESSAGE_PS5)
+    {
+        // This state does not need to do periodic checks
+        return;
+    }
 
-	if (was(current_state, new_state, STATE_CONTROLLER_CONNECTED))
-	{
-		on_exit_arm_mode();
-		on_enter_disconnected_mode();
-		return;
-	}
+    if (was(current_state, new_state, STATE_CONTROLLER_CONNECTED))
+    {
+        on_exit_arm_mode();
+        on_enter_disconnected_mode();
+        return;
+    }
 
-	// Exit "arm" mode
-	if (is_now(current_state, new_state, STATE_BIT_CROSS))
-	{
-		on_exit_arm_mode();
-		on_enter_driving_mode();
-		return;
-	}
-	ps5_t *data = d;
-	arm_move(data->analog.stick.lx, data->analog.stick.ly, data->analog.stick.rx, data->analog.stick.ry);
+    // Exit "arm" mode
+    if (is_now(current_state, new_state, STATE_BIT_CROSS))
+    {
+        on_exit_arm_mode();
+        on_enter_driving_mode();
+        return;
+    }
+    ps5_t *data = d;
+    arm_move(data->analog.stick.lx, data->analog.stick.ly, data->analog.stick.rx, data->analog.stick.ry);
 }
 
 void process_other_message(uint8_t type, void *data)
 {
-	fsm_current_state->cb(type, 0, 0, 0);
+    fsm_current_state->cb(type, 0, 0, 0);
+    process_throttle();
 }
 
 void process_ps5_message(ps5_t *data)
 {
-	static uint32_t current_state = 0;
+    static uint32_t current_state = 0;
 
-	bool pressing_cross = (data->button.cross != 0);
-	bool controller_connected = data->controller_connected;
-	bool pressing_led = (data->button.l1 != 0);
-	bool pressing_r3 = (data->button.r3 != 0);
-	bool pressing_horn = (data->button.r1 != 0);
-	bool pressing_record = (data->button.circle != 0);
-	bool pressing_replay = (data->button.triangle != 0);
-	bool pressing_auto = (data->button.square != 0);
-	bool reverse = is_going_reverse(data);
-	bool fwd = is_going_forward(data);
+    bool pressing_cross = (data->button.cross != 0);
+    bool controller_connected = data->controller_connected;
+    bool pressing_led = (data->button.l1 != 0);
+    bool pressing_r3 = (data->button.r3 != 0);
+    bool pressing_horn = (data->button.r1 != 0);
+    bool pressing_record = (data->button.circle != 0);
+    bool pressing_replay = (data->button.triangle != 0);
+    bool pressing_auto = (data->button.square != 0);
+    bool reverse = is_going_reverse(data);
+    bool fwd = is_going_forward(data);
 
-	uint32_t new_state = (pressing_horn << STATE_BIT_HORN) |
-						 (pressing_r3 << STATE_BIT_R3) |
-						 (pressing_record << STATE_BIT_RECORD) |
-						 (pressing_replay << STATE_BIT_REPLAY) |
-						 (pressing_cross << STATE_BIT_CROSS) |
-						 (pressing_auto << STATE_BIT_AUTO) |
-						 (reverse << STATE_BIT_REVERSE) |
-						 (fwd << STATE_BIT_FWD) |
-						 (controller_connected << STATE_CONTROLLER_CONNECTED) |
-						 (pressing_led << STATE_BIT_LED);
+    uint32_t new_state = (pressing_horn << STATE_BIT_HORN) |
+                         (pressing_r3 << STATE_BIT_R3) |
+                         (pressing_record << STATE_BIT_RECORD) |
+                         (pressing_replay << STATE_BIT_REPLAY) |
+                         (pressing_cross << STATE_BIT_CROSS) |
+                         (pressing_auto << STATE_BIT_AUTO) |
+                         (reverse << STATE_BIT_REVERSE) |
+                         (fwd << STATE_BIT_FWD) |
+                         (controller_connected << STATE_CONTROLLER_CONNECTED) |
+                         (pressing_led << STATE_BIT_LED);
 
-	char str[256];
-	sprintf(&str, "Current state: %lu, new state: %lu\n", current_state, new_state);
-	broadcast_log(&str);
+    metrics.controller_battery = data->status.battery;
 
-	metrics.controller_battery = data->status.battery;
-
-	fsm_current_state->cb(MESSAGE_PS5, data, current_state, new_state);
-	current_state = new_state;
+    fsm_current_state->cb(MESSAGE_PS5, data, current_state, new_state);
+    process_throttle();
+    current_state = new_state;
 }
 
 void pwm_motor_init()
@@ -649,207 +713,220 @@ void pwm_motor_init()
 #define LEDC_TIMER LEDC_TIMER_0
 #define LEDC_MODE LEDC_LOW_SPEED_MODE
 #define LEDC_DUTY_RES LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
-#define LEDC_FREQUENCY (4000)			// Frequency in Hertz. Set frequency at 4 kHz
-	ledc_timer_config_t ledc_timer = {
-		.speed_mode = LEDC_MODE,
-		.duty_resolution = LEDC_DUTY_RES,
-		.timer_num = LEDC_TIMER,
-		.freq_hz = LEDC_FREQUENCY, // Set output frequency at 4 kHz
-		.clk_cfg = LEDC_AUTO_CLK};
-	ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+#define LEDC_FREQUENCY (4000)           // Frequency in Hertz. Set frequency at 4 kHz
+    ledc_timer_config_t ledc_timer = {
+        .speed_mode = LEDC_MODE,
+        .duty_resolution = LEDC_DUTY_RES,
+        .timer_num = LEDC_TIMER,
+        .freq_hz = LEDC_FREQUENCY, // Set output frequency at 4 kHz
+        .clk_cfg = LEDC_AUTO_CLK};
+    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
 
-	ledc_channel_config_t ledc_channel = {
-		.speed_mode = LEDC_MODE,
-		.channel = LEDC_CHANNEL_0,
-		.timer_sel = LEDC_TIMER,
-		.intr_type = LEDC_INTR_DISABLE,
-		.gpio_num = GPIO_MOTOR_PWM1,
-		.duty = 0,
-		.hpoint = 0};
-	ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
+    ledc_channel_config_t ledc_channel = {
+        .speed_mode = LEDC_MODE,
+        .channel = LEDC_CHANNEL_0,
+        .timer_sel = LEDC_TIMER,
+        .intr_type = LEDC_INTR_DISABLE,
+        .gpio_num = GPIO_MOTOR_PWM1,
+        .duty = 0,
+        .hpoint = 0};
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 
-	ledc_channel_config_t ledc_channel2 = {
-		.speed_mode = LEDC_MODE,
-		.channel = LEDC_CHANNEL_1,
-		.timer_sel = LEDC_TIMER,
-		.intr_type = LEDC_INTR_DISABLE,
-		.gpio_num = GPIO_MOTOR_PWM2,
-		.duty = 0,
-		.hpoint = 0};
-	ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel2));
+    ledc_channel_config_t ledc_channel2 = {
+        .speed_mode = LEDC_MODE,
+        .channel = LEDC_CHANNEL_1,
+        .timer_sel = LEDC_TIMER,
+        .intr_type = LEDC_INTR_DISABLE,
+        .gpio_num = GPIO_MOTOR_PWM2,
+        .duty = 0,
+        .hpoint = 0};
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel2));
 }
 
 static void IRAM_ATTR pcnt_isr(void *arg)
 {
-	motor_pcnt *pcnt = (motor_pcnt *)arg;
-	pcnt->motor_revolutions++;
-	pcnt->motor_direction = 1;
+    motor_pcnt *pcnt = (motor_pcnt *)arg;
+    pcnt->motor_revolutions++;
+    pcnt->motor_direction = 1;
 
-	uint32_t status = 0;
-	pcnt_get_event_status(pcnt->unit, &status);
+    uint32_t status = 0;
+    pcnt_get_event_status(pcnt->unit, &status);
 
-	pcnt->motor_revolutions++;
-	if (status & PCNT_EVT_H_LIM)
-	{
-		pcnt->motor_direction = 1;
-	}
-	else if (status & PCNT_EVT_L_LIM)
-	{
-		pcnt->motor_direction = -1;
-	}
+    pcnt->motor_revolutions++;
+    if (status & PCNT_EVT_H_LIM)
+    {
+        pcnt->motor_direction = 1;
+    }
+    else if (status & PCNT_EVT_L_LIM)
+    {
+        pcnt->motor_direction = -1;
+    }
 }
 
 esp_err_t pcnt_motor_init(motor_pcnt *pcnt, uint8_t pinA, uint8_t pinB)
 {
-	esp_err_t ret;
-	static bool isr_installed = false;
+    esp_err_t ret;
+    static bool isr_installed = false;
 
-	const pcnt_config_t encodercfg = {
-		.pulse_gpio_num = pinA,
-		.ctrl_gpio_num = pinB,
-		.lctrl_mode = PCNT_MODE_REVERSE,
-		.hctrl_mode = PCNT_MODE_KEEP,
-		.channel = PCNT_CHANNEL_0,
-		.unit = pcnt->unit,
-		.pos_mode = PCNT_COUNT_INC,
-		.neg_mode = PCNT_COUNT_DIS,
+    const pcnt_config_t encodercfg = {
+        .pulse_gpio_num = pinA,
+        .ctrl_gpio_num = pinB,
+        .lctrl_mode = PCNT_MODE_REVERSE,
+        .hctrl_mode = PCNT_MODE_KEEP,
+        .channel = PCNT_CHANNEL_0,
+        .unit = pcnt->unit,
+        .pos_mode = PCNT_COUNT_INC,
+        .neg_mode = PCNT_COUNT_DIS,
 
-		// The motor we're using, FIT0186 does 16 pulses per rev before gears. This equals to 700 pulses per gear shaft rev.
-		// The number of pulses per rev that it generates is 700. We'll trigger every 88 so that we can have a finer grain of detection
-		// Increasing the granularity gives us amore precise reading
-		.counter_h_lim = 88,
-		.counter_l_lim = -88,
-	};
+        // The motor we're using, FIT0186 does 16 pulses per rev before gears. This equals to 700 pulses per gear shaft rev.
+        // The number of pulses per rev that it generates is 700. We'll trigger every 88 so that we can have a finer grain of detection
+        // Increasing the granularity gives us amore precise reading
+        .counter_h_lim = 88,
+        .counter_l_lim = -88,
+    };
 
-	pcnt_unit_config(&encodercfg);
+    pcnt_unit_config(&encodercfg);
 
-	pcnt_set_filter_value(pcnt->unit, 100);
-	pcnt_filter_enable(pcnt->unit);
+    pcnt_set_filter_value(pcnt->unit, 100);
+    pcnt_filter_enable(pcnt->unit);
 
-	pcnt_event_enable(pcnt->unit, PCNT_EVT_H_LIM);
-	pcnt_event_enable(pcnt->unit, PCNT_EVT_L_LIM);
-	if (!isr_installed)
-	{
-		pcnt_isr_service_install(0);
-		isr_installed = true;
-	}
-	pcnt_isr_handler_add(pcnt->unit, pcnt_isr, (void *)pcnt);
+    pcnt_event_enable(pcnt->unit, PCNT_EVT_H_LIM);
+    pcnt_event_enable(pcnt->unit, PCNT_EVT_L_LIM);
+    if (!isr_installed)
+    {
+        pcnt_isr_service_install(0);
+        isr_installed = true;
+    }
+    pcnt_isr_handler_add(pcnt->unit, pcnt_isr, (void *)pcnt);
 
-	pcnt_counter_pause(pcnt->unit);
-	pcnt_counter_clear(pcnt->unit);
-	pcnt_counter_resume(pcnt->unit);
-	return ESP_OK;
+    pcnt_counter_pause(pcnt->unit);
+    pcnt_counter_clear(pcnt->unit);
+    pcnt_counter_resume(pcnt->unit);
+    return ESP_OK;
 }
 
 void on_start_sleep()
 {
-	LED_SET_GOING_TO_SLEEP_PATTERN();
-	vTaskDelay(2500 / portTICK_PERIOD_MS);
-	led_turnoff();
-	vTaskDelay(500 / portTICK_PERIOD_MS);
+    LED_SET_GOING_TO_SLEEP_PATTERN();
+    vTaskDelay(2500 / portTICK_PERIOD_MS);
+    led_turnoff();
+    vTaskDelay(500 / portTICK_PERIOD_MS);
 }
 
 void hardware_init()
 {
-	throttle_map = &throttle_map_high;
-	main_queue = xQueueCreate(20, sizeof(queue_msg));
+    throttle_map = &throttle_map_high;
+    main_queue = xQueueCreate(20, sizeof(queue_msg));
 
-	init_deep_sleep(GPIO_SLEEP_BUTTON, on_start_sleep);
+    init_deep_sleep(GPIO_SLEEP_BUTTON, on_start_sleep);
 
-	uart_init();
-	buzzer_init();
-	led_init();
-	servo_init();
-	servo_create(GPIO_STEERING, &comparator_steering);
-	arm_init();
-	pwm_motor_init();
-	pcnt_motor_init(&motor1_pcnt, MOTOR1SENSOR1, MOTOR1SENSOR2);
-	pcnt_motor_init(&motor2_pcnt, MOTOR2SENSOR1, MOTOR2SENSOR2);
-	pcnt_motor_init(&motor3_pcnt, MOTOR3SENSOR1, MOTOR3SENSOR2);
-	pcnt_motor_init(&motor4_pcnt, MOTOR4SENSOR1, MOTOR4SENSOR2);
+    uart_init();
+    buzzer_init();
+    led_init();
+    servo_init();
+    servo_create(GPIO_STEERING, &comparator_steering);
+    arm_init();
+    laser_init();
+    pwm_motor_init();
+    pcnt_motor_init(&motor1_pcnt, MOTOR1SENSOR1, MOTOR1SENSOR2);
+    pcnt_motor_init(&motor2_pcnt, MOTOR2SENSOR1, MOTOR2SENSOR2);
+    pcnt_motor_init(&motor3_pcnt, MOTOR3SENSOR1, MOTOR3SENSOR2);
+    pcnt_motor_init(&motor4_pcnt, MOTOR4SENSOR1, MOTOR4SENSOR2);
 
-	servo_start();
-	obstacle_init_detection();
-	record_init();
+    servo_start();
+    obstruction_init_detection();
+    record_init();
 
-	on_enter_disconnected_mode();
-	// Using a task scheduler would be more appropriate here to be able to set priorities
-	xTaskCreate(check_rpm, "check_rpm", 4096, NULL, 5, &rpm_task);
+    on_enter_disconnected_mode();
+    // Using a task scheduler would be more appropriate here to be able to set priorities
+    xTaskCreate(check_rpm, "check_rpm", 4096, NULL, 5, &rpm_task);
 }
 
 void hardware_suspend()
 {
-	queue_msg msg;
-	msg.type = MESSAGE_STOP;
-	hardware_send_message(&msg);
-	uart_stop();
-	vTaskSuspend(rpm_task);
+    queue_msg msg;
+    msg.type = MESSAGE_STOP;
+    hardware_send_message(&msg);
+    uart_stop();
+    vTaskSuspend(rpm_task);
 }
 
 void hardware_send_message(queue_msg *msg)
 {
-	xQueueGenericSend(main_queue, msg, 0, queueSEND_TO_BACK);
+    xQueueGenericSend(main_queue, msg, 0, queueSEND_TO_BACK);
 }
 
 void hardware_run()
 {
-	queue_msg msg;
+    queue_msg msg;
 
-	while (1)
-	{
-		esp_err_t err;
+    while (1)
+    {
+        esp_err_t err;
 
-		ps5_t data;
-		size_t s = sizeof(ps5_t);
+        ps5_t data;
+        size_t s = sizeof(ps5_t);
 
-		if (xQueueReceive(main_queue, (void *)&msg, portMAX_DELAY))
-		{
-			if (msg.type == MESSAGE_STOP)
-			{
-				break;
-			}
-			else if (msg.type == MESSAGE_REPLAY_END)
-			{
-				process_other_message(msg.type, 0);
-			}
-			else if (msg.type == MESSAGE_PS5)
-			{
-				ps5_t *data = (ps5_t *)msg.data;
+        if (xQueueReceive(main_queue, (void *)&msg, portMAX_DELAY))
+        {
+            if (msg.type == MESSAGE_STOP)
+            {
+                break;
+            }
+            else if (msg.type == MESSAGE_OBSTRUCTION_DETECTED)
+            {
+                process_other_message(msg.type, 0);
+            }
+            else if (msg.type == MESSAGE_OBSTRUCTION_CLEARED)
+            {
+                process_other_message(msg.type, 0);
+            }
+            else if (msg.type == MESSAGE_COLLISION)
+            {
+                process_other_message(msg.type, 0);
+            }
+            else if (msg.type == MESSAGE_REPLAY_END)
+            {
+                process_other_message(msg.type, 0);
+            }
+            else if (msg.type == MESSAGE_PS5)
+            {
+                ps5_t *data = (ps5_t *)msg.data;
 
-				uint8_t received_checksum = data->checksum;
-				data->checksum = 0;
-				uint8_t c = 0;
-				for (int i = 0; i < sizeof(ps5_t) - 1; i++)
-				{
-					c += ((uint8_t *)data)[i];
-				}
-				if (received_checksum != c)
-				{
-					ESP_LOGI(TAG, ">>>>>>>>>>>>>>>>>> Controller BAD CHECKSUM. RESETTING CONTROL %i/%i<<<<<<<<<<<<<<<<<<<<<", received_checksum, c);
-					memset(data, 0, sizeof(ps5_t));
-					data->latestPacket = 1;
-					data->controller_connected = 1;
-				}
+                uint8_t received_checksum = data->checksum;
+                data->checksum = 0;
+                uint8_t c = 0;
+                for (int i = 0; i < sizeof(ps5_t) - 1; i++)
+                {
+                    c += ((uint8_t *)data)[i];
+                }
+                if (received_checksum != c)
+                {
+                    ESP_LOGI(TAG, ">>>>>>>>>>>>>>>>>> Controller BAD CHECKSUM. RESETTING CONTROL %i/%i<<<<<<<<<<<<<<<<<<<<<", received_checksum, c);
+                    memset(data, 0, sizeof(ps5_t));
+                    data->latestPacket = 1;
+                    data->controller_connected = 1;
+                }
 
-				if (!data->controller_connected)
-				{
-					memset(data, 0, sizeof(ps5_t));
-					data->latestPacket = 1;
-				}
+                if (!data->controller_connected)
+                {
+                    memset(data, 0, sizeof(ps5_t));
+                    data->latestPacket = 1;
+                }
 
-				// uint8_t *d = &data;
-				//  ESP_LOGI(TAG, "===========%i, %i, %i, %i, %i", (int8_t)d[0], (int8_t)d[1], (int8_t)d[2], (int8_t)d[3], d[sizeof(ps5_t) - 1]);
-				if (data->latestPacket)
-				{
-					ESP_LOGI(TAG, "New PS5 Packet. Throttle=%i", data->analog.button.r2);
-					process_ps5_message(data);
-				}
+                // uint8_t *d = &data;
+                //  ESP_LOGI(TAG, "===========%i, %i, %i, %i, %i", (int8_t)d[0], (int8_t)d[1], (int8_t)d[2], (int8_t)d[3], d[sizeof(ps5_t) - 1]);
+                if (data->latestPacket)
+                {
+                    ESP_LOGI(TAG, "New PS5 Packet. Throttle=%i", data->analog.button.r2);
+                    process_ps5_message(data);
+                }
 
-				free(data);
-			}
-		}
-	}
+                free(data);
+            }
+        }
+    }
 
-	broadcast_log("Suspending main task\n");
-	vTaskSuspend(0);
+    broadcast_log("Suspending main task\n");
+    vTaskSuspend(0);
 }

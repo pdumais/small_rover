@@ -10,7 +10,8 @@
 #define SERVO_TIMEBASE_PERIOD 20000          // 20000 ticks, 20ms
 
 static const char *TAG = "servo_c";
-static mcpwm_timer_handle_t timer = NULL;
+static mcpwm_timer_handle_t timer0 = NULL;
+static mcpwm_timer_handle_t timer1 = NULL;
 
 static inline uint32_t angle_to_compare(int angle)
 {
@@ -20,6 +21,7 @@ static inline uint32_t angle_to_compare(int angle)
 static mcpwm_oper_handle_t oper1 = NULL;
 static mcpwm_oper_handle_t oper2 = NULL;
 static mcpwm_oper_handle_t oper3 = NULL;
+static mcpwm_oper_handle_t oper4 = NULL;
 
 static int pwm_count = 0;
 
@@ -32,25 +34,35 @@ void servo_init()
         .period_ticks = SERVO_TIMEBASE_PERIOD,
         .count_mode = MCPWM_TIMER_COUNT_MODE_UP,
     };
-    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config, &timer));
+    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config, &timer0));
 
-    mcpwm_operator_config_t operator_config = {
+    timer_config.group_id = 1;
+    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config, &timer1));
+
+    mcpwm_operator_config_t operator0_config = {
         .group_id = 0, // operator must be in the same group to the timer
     };
-    ESP_ERROR_CHECK(mcpwm_new_operator(&operator_config, &oper1));
-    ESP_ERROR_CHECK(mcpwm_new_operator(&operator_config, &oper2));
-    ESP_ERROR_CHECK(mcpwm_new_operator(&operator_config, &oper3));
+    mcpwm_operator_config_t operator1_config = {
+        .group_id = 1, // operator must be in the same group to the timer
+    };
+    ESP_ERROR_CHECK(mcpwm_new_operator(&operator0_config, &oper1));
+    ESP_ERROR_CHECK(mcpwm_new_operator(&operator0_config, &oper2));
+    ESP_ERROR_CHECK(mcpwm_new_operator(&operator0_config, &oper3));
+    ESP_ERROR_CHECK(mcpwm_new_operator(&operator1_config, &oper4));
 
     ESP_LOGI(TAG, "Connect timer and operator");
-    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(oper1, timer));
-    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(oper2, timer));
-    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(oper3, timer));
+    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(oper1, timer0));
+    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(oper2, timer0));
+    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(oper3, timer0));
+    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(oper4, timer1));
 }
 void servo_start()
 {
     ESP_LOGI(TAG, "Enable and start timer");
-    ESP_ERROR_CHECK(mcpwm_timer_enable(timer));
-    ESP_ERROR_CHECK(mcpwm_timer_start_stop(timer, MCPWM_TIMER_START_NO_STOP));
+    ESP_ERROR_CHECK(mcpwm_timer_enable(timer0));
+    ESP_ERROR_CHECK(mcpwm_timer_enable(timer1));
+    ESP_ERROR_CHECK(mcpwm_timer_start_stop(timer0, MCPWM_TIMER_START_NO_STOP));
+    ESP_ERROR_CHECK(mcpwm_timer_start_stop(timer1, MCPWM_TIMER_START_NO_STOP));
 }
 
 void servo_create(uint8_t pin, mcpwm_cmpr_handle_t *comparator)
@@ -68,6 +80,10 @@ void servo_create(uint8_t pin, mcpwm_cmpr_handle_t *comparator)
     if (pwm_count >> 1 == 2)
     {
         oper = &oper3;
+    }
+    if (pwm_count >> 1 == 3)
+    {
+        oper = &oper4;
     }
 
     mcpwm_gen_handle_t generator = NULL;
@@ -97,6 +113,12 @@ void servo_create(uint8_t pin, mcpwm_cmpr_handle_t *comparator)
 
     // int angle = 0;
     // ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comparator, angle_to_compare(angle)));
+}
+
+void servo_enable(mcpwm_cmpr_handle_t *comparator, bool on)
+{
+    // TODO: turn on or off servo control
+    // TODO: keep generators in a list and find them by cpomparator
 }
 
 void servo_set_angle(mcpwm_cmpr_handle_t *comparator, int angle)
