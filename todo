@@ -1,15 +1,14 @@
 # Tasks
+    telemetry
+        charts
+            live update
+                css highlight effect when a value changes
+        doc: telemetry using ws, and for logs.
+              screenshot
+
     Obstacle detection 
-            
         when entering driving mode, must check for obstruction and block trigger + rumble
-
-
-    PCB for mainboard
-        4 DRV8871
-        socket for ESP
-        terminal headers
-        accelerometer / gyro
-        voltage divider on analog pin for battery level detection
+        while driving, detect object from a longer distance to give time to brake
 
 
 
@@ -21,3 +20,6 @@
 # Dual sense info
         https://gist.github.com/Nielk1/6d54cc2c00d2201ccb8c2720ad7538db
         https://github.com/nowrep/dualsensectl/blob/main/main.c#L746
+
+# Testing websocket
+curl -N -i -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" http://192.168.4.1/telemetry -vvv --output -

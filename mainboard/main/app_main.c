@@ -2,6 +2,7 @@
 #include <esp_system.h>
 #include "hardware.h"
 #include "wifi.h"
+#include "api.h"
 #include <nvs_flash.h>
 
 void init_nvs()
@@ -27,6 +28,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     hardware_init();
     wifi_init();
+    start_api();
 
     hardware_run();
 }
