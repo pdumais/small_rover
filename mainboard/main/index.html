@@ -2,320 +2,383 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css?a=6">
+    <style>
+        body {
+            background-color: white;
+            color: #22313f;
+            padding-top: 25px;
+            font-family: Verdana, sans-serif;
+            padding: 10px;
+            
+        }
+
+        .logs {
+            font-family: "Andale Mono", AndaleMono, monospace;
+            font-size: 12px;
+            width:100%;
+            height: 200px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius:5px;
+            overflow:scroll;
+        }
+
+        .rawmetrics {
+            font-family: "Andale Mono", AndaleMono, monospace;
+            font-size: 12px;
+            display:flex;
+            width:100%;
+            flex-wrap:wrap;
+        }
+        .rawmetrics span
+        {
+            margin-right:10px;
+            margin-bottom: 10px;
+            border:1px solid rgba(0,0,0,0.1);
+            white-space: nowrap;
+            border-radius: 5px;
+            padding:5px;
+            width:140px;
+        }
+        .canvastile {
+            border: 1px solid rgba(0,0,0,0.2);
+            padding: 10px;
+            display:inline-flex;
+            margin-right:20px;
+            margin-bottom:20px; 
+            box-shadow: 5px 5px 5px rgba(0,0,0,0.1);
+        }
+        .metricscol {
+            display:flex;
+            flex-direction: row;
+        }
+        .metricskey {
+            padding: 5px;
+            width: 100px;
+        }
+        .metricsval {
+            padding: 5px;
+
+        }
+    </style>
     <script>
-        var pins = [];
         let socket;
 
-        function connectWebSocket() {
-            const url = "ws://" + window.location.host + "/ws";
+    function updateMetrics(metrics)
+    {
+        console.log(metrics);
+        let m = metrics.reduce((acc, val) => {
+            acc += "<span>"+val.key+":"+val.val+"</span>";
+            return acc;
+        },"");
 
-            socket = new WebSocket(url);
+        document.getElementById("raw").innerHTML = m;
+        //  document.getElementById("metrics").innerHTML = m;
+    }
 
-            socket.onopen = () => {
-                console.log('WebSocket connection opened');
-            };
+    function connectWebSocket() {
+        const url = "ws://" + window.location.host + "/telemetry";
 
-            socket.onmessage = (event) => {
-                const message = JSON.parse(event.data);
-                if (message.event == "pin") {
-                    pins.some(p => {
-                        if (p.num == message.pin) {
-                            p.state = !message.state;
-                            updatePins();
-                            return true;
-                        }
-                        return false;
-                    });
-                }
-            };
+        socket = new WebSocket(url);
 
-            socket.onclose = (event) => {
-                console.log("connection closed");
-                if (!event.wasClean) {
-                    setTimeout(connectWebSocket, 2000);
-                }
-            };
+        socket.onopen = () => {
+            console.log('WebSocket connection opened');
+        };
 
-            socket.onerror = (error) => {
-                console.log('WebSocket error:', error);
-            };
-        }
-
-        function pintoggle(num, on) {
-            const xhr = new XMLHttpRequest();
-
-            xhr.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    getPins();
-                }
-            }
-            xhr.open("POST", "/jsonrpc");
-            xhr.send('{"jsonrpc": "2.0", "method": "' + (on ? "setpin" : "clearpin") + '", "params": {"pin":' + num + '}, "id": "1"}');
-        }
-
-        function restart() {
-            const xhr = new XMLHttpRequest();
-
-            xhr.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-
-                }
-            }
-            xhr.open("POST", "/jsonrpc");
-            xhr.send('{"jsonrpc": "2.0", "method": "restart", "params": {}, "id": "1"}');
-        }
-
-        function ota() {
-            const xhr = new XMLHttpRequest();
-
-            xhr.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-
-                }
-            }
-            let url = document.getElementById("firmwarehost").value;
-            xhr.open("POST", "/jsonrpc");
-            xhr.send('{"jsonrpc": "2.0", "method": "ota", "params": {"upgrade_url": "' + url + '"}, "id": "1"}');
-        }
-
-        function modechange(s, num) {
-            const xhr = new XMLHttpRequest();
-            let newval = s.value;
-            xhr.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    location.reload();
-                }
-            }
-            xhr.open("POST", "/jsonrpc");
-            let msg = {
-                jsonrpc: "2.0",
-                method: "configpins",
-                id: 1,
-                params: {
-                    pins: [{ pin: num, mode: Number(newval), maxon: 0 }]
-                }
-            };
-            console.log(msg);
-            xhr.send(JSON.stringify(msg));
-        }
-
-        function maxtimeChange(elem, pin) {
-            let mt = elem.value;
-            if (isNaN(mt)) return;
-            mt = Number(mt);
-
-            let params = {
-                pins: [{ pin: pin, mode: 2, maxon: mt }]
-            };
-
-            const xhr = new XMLHttpRequest();
-            xhr.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    location.reload();
-                }
-            }
-            xhr.open("POST", "/jsonrpc");
-            let msg = {
-                jsonrpc: "2.0",
-                method: "configpins",
-                id: 1,
-                params: params,
-            };
-            console.log(msg);
-            xhr.send(JSON.stringify(msg));
-        }
-
-        function createPinBox(p) {
-            if (p.mode == 0x80) return "";
-
-            let options = ["Disabled", "Input", "Output", "Analog"].map((elem, idx) => {
-                let selected = "";
-                if (p.mode == idx) selected = "selected";
-                return "<option " + selected + " value=" + idx + ">" + elem + "</option>";
+        socket.onmessage = (event) => {
+            const data = event.data.split(",").map(elem => {
+                let vals = elem.split(":");
+                return {key:vals[0], val:vals[1]};
             });
+            updateMetrics(data);
+        };
 
-            let maxtime = "";
-            let button = "";
-            let state = "";
-
-            if (p.mode == 0) {
-                state = "<span style=\"color:#c3c3c3;\">DISABLED</span>";
-            } else if (p.mode == 1) {
-                state = (p.state) ? "<span>OFF</span>" : "<span style=\"color:#00b7cb;\">ON</span>";
-            } else if (p.mode == 2) {
-                maxtime = "<input onchange=\"maxtimeChange(this, " + p.num + ")\" value=" + p.maxon + " />"
-                button = "<button class=pinbutton onclick=\"pintoggle(" + p.num + "," + !p.state + ")\">Toggle</button>";
-                state = (!p.state) ? "<span>OFF</span>" : "<span style=\"color:#00b7cb;\">ON</span>";
-            } else if (p.mode == 3) { // Analog
-                state = "<span>" + p.state + "</span>";
+        socket.onclose = (event) => {
+            console.log("connection closed");
+            if (!event.wasClean) {
+                setTimeout(connectWebSocket, 2000);
             }
+        };
 
+        socket.onerror = (error) => {
+            console.log('WebSocket error:', error);
+        };
+    }
 
-            let h = "<div class=pins>";
-            h += "<div class=pinscol1><b>" + p.num + "</b></div>";
-            h += "<div class=pinscol2><select onchange=\"modechange(this, " + p.num + ")\">" + options.join("") + "</select></div>";
-            h += "<div class=pinscol3>" + state + "</div>";
-            h += "<div class=pinscol4>" + maxtime + "</div>";
-            h += "<div class=pinscol5>" + button + "</div>";
-            h += "</div>";
-            return h;
-        }
+    function connectLogWebSocket() {
+        const url = "ws://" + window.location.host + "/logs";
 
-        function updatePins() {
-            let pinstable = document.getElementById("pinstable");
-            console.log(pins);
-            let rows = pins.map((p) => {
-                return createPinBox(p);
-            })
+        socket = new WebSocket(url);
 
-            let rowHeader = "<div class=pins>";
-            rowHeader += "<div class=\"pinscol1 pinsheader\"><b>GPIO</b></div>";
-            rowHeader += "<div class=\"pinscol2 pinsheader\"><b>Mode</b></div>";
-            rowHeader += "<div class=\"pinscol3 pinsheader\"><b>State</b></div>";
-            rowHeader += "<div class=\"pinscol4 pinsheader\"><b>Failsafe</b></div>";
-            rowHeader += "<div class=\"pinscol5 pinsheader\"><b>Actions</b></div>";
-            rowHeader += "</div>";
+        socket.onopen = () => {
+            console.log('Logs WebSocket connection opened');
+        };
 
+        socket.onmessage = (event) => {
+            const data = event.data;
+            let div = document.createElement("div");
+            div.innerText = data;
+            document.getElementById("logs").appendChild(div);
+        };
 
-            rows.splice(0, 0, rowHeader);
-            pinstable.innerHTML = rows.reduce((acc, current) => acc + current);
-        }
-
-        function metricBox(title, data) {
-            let ret = "<div class=metricbox>";
-            ret += "<span>" + data + "</span>";
-            ret += "</div>";
-            return ret;
-        }
-
-
-        function updateClimate(temp, pressure, hum) {
-            let climate = document.getElementById("climate");
-            temp = (temp == -1) ? "--" : temp.toFixed(1) + "&#176;C";
-            pressure = (pressure == -1) ? "--" : (pressure / 1000).toFixed(1) + " kPa";
-            hum = (hum == -1) ? "--" : hum + " %";
-
-            let row = "<div class=pins ><div style=\"display:flex; margin:auto\">";
-            row += metricBox("Temperature", temp);
-            row += metricBox("Pressure", pressure);
-            row += metricBox("Humidity", hum);
-            row += "</div></div>";
-
-
-            climate.innerHTML = row;
-        }
-
-        function getPins() {
-            const xhr = new XMLHttpRequest();
-
-            xhr.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    let status = JSON.parse(xhr.responseText).result;
-                    pins.forEach(p => p.state = 0);
-                    status.pins.forEach(element => {
-                        pins[element].state = 1;
-                    });
-                    updatePins();
-                }
+        socket.onclose = (event) => {
+            console.log("Log connection closed");
+            if (!event.wasClean) {
+                setTimeout(connectLogWebSocket, 2000);
             }
-            xhr.open("POST", "/jsonrpc");
-            xhr.send('{"jsonrpc": "2.0", "method": "getpins", "params": {}, "id": "1"}');
+        };
 
+        socket.onerror = (error) => {
+            console.log('Log WebSocket error:', error);
+        };
+    }
+
+    function createGauge(name, val, max) {
+        let c = document.createElement("canvas");
+        let e = document.createElement("div");
+        e.id = name;
+        e.className = "canvastile";
+        e.width = "200";
+        e.height = "150";
+        c.width = "200";
+        c.height = "150";
+        //e.style= "height:150px; width:100%;max-width:150px";
+        e.appendChild(c);
+        document.getElementById("metrics").appendChild(e);
+        var ctx = c.getContext('2d');
+        ctx.font = "16px Verdana";
+        ctx.textAlign="center";
+        ctx.fillText(name,e.width/2,20);
+        ctx.fillText(val,e.width/2,110);
+        ctx.beginPath();
+        ctx.arc(101, 100, 50, -Math.PI, -Math.PI+(val*Math.PI/max));
+        ctx.lineWidth = 20;
+        ctx.strokeStyle = 'rgba(54, 162, 235, 0.2)';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(101, 100, 60, -Math.PI, 0);
+        ctx.moveTo(40,100);
+        ctx.arc(101, 100, 40, -Math.PI, 0);
+        ctx.moveTo(140,101);
+        ctx.lineTo(162,101);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+        ctx.stroke();
+    }
+
+    function createBatteryGauge(name, val) {
+        let max = 100;
+        let e = document.createElement("div");
+        e.id = name;
+        e.className = "canvastile";
+        e.width = "200";
+        e.height = "150";
+        let c = document.createElement("canvas");
+        c.width = "200";
+        c.height = "150";
+        e.appendChild(c);
+        document.getElementById("metrics").appendChild(e);
+
+        var ctx = c.getContext('2d');
+        ctx.font = "16px Verdana";
+        ctx.textAlign="center";
+        ctx.fillText(name,e.width/2,20);
+        ctx.beginPath();
+        ctx.roundRect(50,50,100,50,5);
+        ctx.roundRect(150,65,10,20,[0,2,2,0]);
+        ctx.strokeStyle = 'rgba(54, 162, 235, 1)';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.roundRect(55,55,25,40,1);
+        ctx.roundRect(85,55,25,40,1);
+        ctx.roundRect(115,55,25,40,1);
+        ctx.fillStyle = 'rgba(54, 162, 235, '+(val/2/100)+')';
+        ctx.fill();
+
+        ctx.fillStyle = 'black';
+        ctx.fillText(val+"%",e.width/2,80);
+    }
+
+    function createAngleGauge(name, val) {
+        let max = 100;
+        let c = document.createElement("canvas");
+        let e = document.createElement("div");
+        e.id = name;
+        e.className = "canvastile";
+        e.width = "200";
+        e.height = "150";
+        c.width = "200";
+        c.height = "150";
+        //e.style= "height:150px; width:100%;max-width:150px";
+        e.appendChild(c);
+        document.getElementById("metrics").appendChild(e);
+        var ctx = c.getContext('2d');
+        ctx.font = "16px Verdana";
+        ctx.textAlign="center";
+        ctx.fillText(name,e.width/2,20);
+        ctx.fillText(val,e.width/2,110);
+
+        ctx.beginPath();
+        ctx.arc(101, 100, 50, -Math.PI, 0);
+        ctx.lineWidth = 20;
+        ctx.strokeStyle = 'rgba(54, 162, 235, 0.2)';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(101, 100, 50, (Math.PI*val/180)-(Math.PI/2), (Math.PI*val/180)-(Math.PI/2)+0.05);
+        ctx.lineWidth = 20;
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(101, 100, 60, -Math.PI, 0);
+        ctx.moveTo(40,100);
+        ctx.arc(101, 100, 40, -Math.PI, 0);
+        ctx.moveTo(140,101);
+        ctx.lineTo(162,101);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+        ctx.stroke();
+    }
+
+    function createTemperature(val) {
+        let c = document.createElement("canvas");
+        let e = document.createElement("div");
+        e.id = name;
+        e.className = "canvastile";
+        e.width = "200";
+        e.height = "150";
+        c.width = "200";
+        c.height = "150";
+        e.appendChild(c);
+        document.getElementById("metrics").appendChild(e);
+        var ctx = c.getContext('2d');
+        ctx.font = "16px Verdana";
+        ctx.textAlign="center";
+        ctx.fillText(val+"C",30+ e.width/2,60);
+
+        let x = 100 ;
+        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = 'rgba(54, 162, 235, 0.2)'
+        ctx.beginPath();
+        ctx.arc(x,100,20,-1,Math.PI+1);
+        ctx.moveTo(x-10,20)
+        ctx.arc(x,20,10,-Math.PI,0);
+        ctx.moveTo(x-10,20);
+        ctx.lineTo(x-10,84);
+        ctx.moveTo(x+10,20);
+        ctx.lineTo(x+10,84);
+        for (y=30; y<90; y+=20)
+        {
+            ctx.moveTo(x+3,y);
+            ctx.lineTo(x+10,y);
         }
+        ctx.stroke();
 
-        function getStatus() {
-            const xhr = new XMLHttpRequest();
+        let h=50;
+        ctx.beginPath();
+        ctx.moveTo(x,100)
+        ctx.arc(x,100,18,0,2*Math.PI);
+        ctx.rect(x-9,100-h,18,h)
+        ctx.fill();
+  }
 
-            xhr.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    let status = JSON.parse(xhr.responseText).result;
-                    document.getElementById("device").innerHTML = status.device;
-                    document.getElementById("cores").innerHTML = status.cores;
-                    document.getElementById("revision").innerHTML = status.silicon_revision_major + "." + status.silicon_revision_minor;
-                    document.getElementById("flashsize").innerHTML = status.flash_size;
-                    document.getElementById("mac").innerHTML = status.mac;
-                    pins = status.pins.map((elem, idx) => {
-                        return {
-                            num: idx,
-                            state: 0,
-                            mode: elem.mode,
-                            maxon: elem.maxon,
-                        };
-                    });
+  function createHumidity(val) {
+        let c = document.createElement("canvas");
+        let e = document.createElement("div");
+        e.id = name;
+        e.className = "canvastile";
+        e.width = "200";
+        e.height = "150";
+        c.width = "200";
+        c.height = "150";
+        e.appendChild(c);
+        document.getElementById("metrics").appendChild(e);
+        var ctx = c.getContext('2d');
+        ctx.font = "16px Verdana";
+        ctx.textAlign="center";
+        ctx.fillText(val+"%",e.width/2,90);
 
-                    updatePins();
-                    updateClimate(status.temperature, status.pressure, status.humidity);
-                }
-            }
-            xhr.open("POST", "/jsonrpc");
-            xhr.send('{"jsonrpc": "2.0", "method": "status", "params": {}, "id": "1"}');
+        let x = 100 ;
+        ctx.beginPath();
+        ctx.lineJoin = 'miter';
+        ctx.moveTo(x, 20);
+        ctx.quadraticCurveTo(x-2.5, 30, x+28, 68);
+        ctx.arc(x, 88, 34.5, 5.75, 3.66, false);
+        ctx.quadraticCurveTo(x-2.5, 35, x, 20);
+        ctx.closePath();
+        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.fillStyle = 'rgba(54, 162, 235, 0.2)'
+        ctx.stroke();
+        ctx.fill();
+  }
 
-        }
+    function createBars(name,datas) {
+        let max = 256;
+        let c = document.createElement("canvas");
+        let e = document.createElement("div");
+        e.id = name;
+        e.className = "canvastile";
+        e.width = "200";
+        e.height = "150";
+        c.width = "200";
+        c.height = "150";
+        //e.style= "height:150px; width:100%;max-width:150px";
+        e.appendChild(c);
+        document.getElementById("metrics").appendChild(e);
+        var ctx = c.getContext('2d');
+        ctx.font = "16px Verdana";
+        ctx.textAlign="center";
+        ctx.fillText(name,e.width/2,20);
+        let y = 40;
+        let w = 200;
+        let h = 20;
+        datas.forEach(d => {
+            ctx.beginPath();
+            ctx.rect(0,y,w*(d/max),h);
+            ctx.fillStyle = 'rgba(54, 162, 235, 0.2)';
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0,y,w,h);
+            ctx.fillStyle = 'black';
+            ctx.fillText(d,e.width/2,y+15);
+
+            y+=(h+10);
+        });
+    }
 
         function init() {
-            getStatus();
-            getPins();
             connectWebSocket();
+            connectLogWebSocket();
+
+            createGauge("pwm",6000, 8192);
+            createGauge("throttle",200, 256);
+            createGauge("speed",2,10);
+            createBatteryGauge("ctrl_battery", 55);
+            createBatteryGauge("main_battery", 87);
+            createAngleGauge("arm_rotation", -35);
+            createAngleGauge("arm_boom", 0);
+            createAngleGauge("arm_arm", 20);
+            createAngleGauge("arm_grapple", 90);
+            createBars("rpm",[200,204,198,201]);
+            createHumidity(55);
+            createTemperature(20);
         }
     </script>
 </head>
 
 <body onload="init()">
-    <div class="pins" style="height:170px">
-        <table class="statustable">
-            <tbody>
-                <tr>
-                    <td><b>Device</b></td>
-                    <td><span id="device" /></td>
-                </tr>
-                <tr>
-                    <td><b>Cores</b></td>
-                    <td><span id="cores" /></td>
-                </tr>
-                <tr>
-                    <td><b>Silicon revision</b></td>
-                    <td><span id="revision" /></td>
-                </tr>
-                <tr>
-                    <td><b>Flash Size</b></td>
-                    <td><span id="flashsize" /></td>
-                </tr>
-                <tr>
-                    <td><b>Mac</b></td>
-                    <td><span id="mac" /></td>
-                </tr>
-            </tbody>
-        </table>
+    <h1 style="width:100%; text-align: center;">Telemetry</h1>
+    <div id="metrics" >
     </div>
-    <div class="pins" style="height:180px; display:block">
-        <div style="border-bottom: 1px solid #C7C7C7; padding:10px;margin-top:10px;display:flex">
-            <div style="width:20%"><b>Restart Device</b></div>
-            <div style="width:40%"></div>
-            <div style="width:40%;text-align: right;">
-                <button onclick="restart()">
-                    Restart
-                </button>
-            </div>
-        </div>
-        <div style="padding:10px;margin-top:20px;display:flex">
-            <div style="width:20%"><b>Firmware Update</b></div>
-            <div style="width:40%; padding-left:5px">
-                <input style="width:200px" id="firmwarehost" value="http://192.168.1.3:8113/dwn.bin" />
-            </div>
-            <div style="width:40%;text-align: right;"><button onclick="ota()">Update</button>
-            </div>
-        </div>
-    </div>
-
-    </div>
-    </div>
-    <br /><br />
-    <div id="climate">
-    </div>
-    <br /><br />
-    <div id="pinstable">
-    </div>
+    <div id="raw" class="rawmetrics"></div>
+    Logs
+    <div id="logs" class="logs"></div>
 </body>
 
 </html>

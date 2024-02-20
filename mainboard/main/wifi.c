@@ -13,7 +13,7 @@
 #include "wifi.h"
 #include "led.h"
 #include "common.h"
-
+#include "http_server.h"
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
@@ -169,13 +169,13 @@ void broadcast_metric(metrics_t *metrics)
         fixed_num[n - 1] = '.';
     }
 
-    char str[256];
+    char str[400];
     n = 0;
     n += sprintf(str, "throttle: %i, ", metrics->throttle);
     n += sprintf(str + n, "pwm: %i, ", metrics->pwm);
     n += sprintf(str + n, "direction: %i, ", metrics->direction);
     n += sprintf(str + n, "steering_angle: %i, ", metrics->steering_angle);
-    n += sprintf(str + n, "rotator_angle: %hhd ", metrics->angle_rotator);
+    n += sprintf(str + n, "rotator_angle: %hhd, ", metrics->angle_rotator);
     n += sprintf(str + n, "boom_angle: %hhd, ", metrics->angle_boom);
     n += sprintf(str + n, "arm_angle: %hhd, ", metrics->angle_arm);
     n += sprintf(str + n, "grapple_angle: %hhd, ", metrics->angle_grapple);
@@ -183,26 +183,28 @@ void broadcast_metric(metrics_t *metrics)
     n += sprintf(str + n, "rpm1: %i, ", metrics->rpm1);
     n += sprintf(str + n, "rpm2: %i, ", metrics->rpm2);
     n += sprintf(str + n, "rpm3: %i, ", metrics->rpm3);
-    n += sprintf(str + n, "rpm4: %i ", metrics->rpm4);
-    n += sprintf(str + n, "battery: %i, ", metrics->controller_battery);
+    n += sprintf(str + n, "rpm4: %i, ", metrics->rpm4);
+    n += sprintf(str + n, "ctrl_battery: %i, ", metrics->controller_battery);
     n += sprintf(str + n, "speed: %s\n", fixed_num);
     ESP_LOGI(TAG, "%s", str);
 
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(242);
-    addr.sin_addr.s_addr = inet_addr("192.168.4.2");
-    int err = sendto(sock, str, n + 1, 0, (struct sockaddr *)&addr, sizeof(addr));
-    if (err < 0)
-    {
-    }
+    //struct sockaddr_in addr;
+    //addr.sin_family = AF_INET;
+    //addr.sin_port = htons(242);
+    //addr.sin_addr.s_addr = inet_addr("192.168.4.2");
+    //int err = sendto(sock, str, n + 1, 0, (struct sockaddr *)&addr, sizeof(addr));
+    //if (err < 0)
+    //{
+    //}
+    broadcast_ws(str, 1);
 }
 
 void broadcast_log(const char *str)
 {
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(242);
-    addr.sin_addr.s_addr = inet_addr("192.168.4.2");
-    int err = sendto(sock, str, strlen(str), 0, (struct sockaddr *)&addr, sizeof(addr));
+    broadcast_ws(str, 2);
+//    struct sockaddr_in addr;
+ //   addr.sin_family = AF_INET;
+  //  addr.sin_port = htons(242);
+   // addr.sin_addr.s_addr = inet_addr("192.168.4.2");
+    //int err = sendto(sock, str, strlen(str), 0, (struct sockaddr *)&addr, sizeof(addr));
 }
