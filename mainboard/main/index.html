@@ -9,6 +9,7 @@
             padding-top: 25px;
             font-family: Verdana, sans-serif;
             padding: 10px;
+            max-width:970px;
             
         }
 
@@ -20,6 +21,10 @@
             border: 1px solid rgba(0,0,0,0.1);
             border-radius:5px;
             overflow:scroll;
+            background-color: #22313f;
+            color: rgba(54, 162, 235, 1);
+            padding: 5px;
+            max-width:950px;
         }
 
         .rawmetrics {
@@ -27,15 +32,19 @@
             font-size: 12px;
             display:flex;
             width:100%;
+            max-width:950px;
             flex-wrap:wrap;
+            background-color: #22313f;
+            color: rgba(54, 162, 235, 1);
+            padding: 5px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius:5px;
         }
         .rawmetrics span
         {
             margin-right:10px;
             margin-bottom: 10px;
-            border:1px solid rgba(0,0,0,0.1);
             white-space: nowrap;
-            border-radius: 5px;
             padding:5px;
             width:140px;
         }
@@ -72,7 +81,19 @@
         },"");
 
         document.getElementById("raw").innerHTML = m;
-        //  document.getElementById("metrics").innerHTML = m;
+        document.getElementById("metrics").innerHTML = "";
+        createGauge("pwm",6000, 8192);
+        createGauge("throttle",200, 256);
+        createGauge("speed",2,10);
+        createBatteryGauge("ctrl_battery", 55);
+        createBatteryGauge("main_battery", 87);
+        createAngleGauge("arm_rotation", -35);
+        createAngleGauge("arm_boom", 0);
+        createAngleGauge("arm_arm", 20);
+        createAngleGauge("arm_grapple", 90);
+        createBars("rpm",[200,204,198,201]);
+        createHumidity(55);
+        createTemperature(20);
     }
 
     function connectWebSocket() {
@@ -356,18 +377,6 @@
             connectWebSocket();
             connectLogWebSocket();
 
-            createGauge("pwm",6000, 8192);
-            createGauge("throttle",200, 256);
-            createGauge("speed",2,10);
-            createBatteryGauge("ctrl_battery", 55);
-            createBatteryGauge("main_battery", 87);
-            createAngleGauge("arm_rotation", -35);
-            createAngleGauge("arm_boom", 0);
-            createAngleGauge("arm_arm", 20);
-            createAngleGauge("arm_grapple", 90);
-            createBars("rpm",[200,204,198,201]);
-            createHumidity(55);
-            createTemperature(20);
         }
     </script>
 </head>

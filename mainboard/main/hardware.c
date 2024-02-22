@@ -24,6 +24,7 @@
 #include "fsm.h"
 #include "uart.h"
 #include "laser.h"
+#include "sensors.h"
 
 #define PCNT_UNIT_MOTOR1 PCNT_UNIT_0
 #define PCNT_UNIT_MOTOR2 PCNT_UNIT_1
@@ -833,6 +834,7 @@ void hardware_init()
     pcnt_motor_init(&motor3_pcnt, MOTOR3SENSOR1, MOTOR3SENSOR2);
     pcnt_motor_init(&motor4_pcnt, MOTOR4SENSOR1, MOTOR4SENSOR2);
 
+    sensors_init();
     servo_start();
     obstruction_init_detection();
     record_init();

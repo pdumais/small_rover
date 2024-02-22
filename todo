@@ -2,7 +2,6 @@
     telemetry
         charts
             live update
-                css highlight effect when a value changes
         doc: telemetry using ws, and for logs.
               screenshot
 
