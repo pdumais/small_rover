@@ -1,6 +1,6 @@
 [Eagle]
 Version="09 06 02"
-Platform="Linux"
+Platform="Windows"
 Globals="Globals"
 Desktop="Desktop"
 
@@ -265,17 +265,11 @@ UsedLibraryUrn="urn:adsk.eagle:library:196"
 UsedLibraryUrn="urn:adsk.eagle:library:197"
 UsedLibraryUrn="urn:adsk.eagle:library:198"
 UsedLibraryUrn="urn:adsk.eagle:library:199"
-UsedLibrary="/home/pat/EAGLE/extralibs/MCP4251-502E_P.lbr"
-UsedLibrary="/home/pat/EAGLE/extralibs/P.lbr"
-UsedLibrary="/home/pat/EAGLE/extralibs/SparkFun-Boards.lbr"
-UsedLibrary="/home/pat/EAGLE/extralibs/ic-coolaudio.lbr"
-UsedLibrary="/home/pat/Downloads/ESP32-S3-DEVKITC-1-N8R2.lbr"
-UsedLibrary="/home/pat/screwterms.lbr"
 
 [Win_1]
 Type="Control Panel"
 Number=0
 
 [Desktop]
-Screen="5520 1080"
+Screen="1920 1200"
 Window="Win_1"
