@@ -373,11 +373,144 @@
         });
     }
 
-        function init() {
-            connectWebSocket();
-            connectLogWebSocket();
+    function createCompass(val) {
+        let c = document.createElement("canvas");
+        let e = document.createElement("div");
+        e.id = name;
+        e.className = "canvastile";
+        e.width = "200";
+        e.height = "150";
+        c.width = "200";
+        c.height = "150";
+        e.appendChild(c);
+        document.getElementById("metrics").appendChild(e);
+        var ctx = c.getContext('2d');
 
-        }
+        ctx.font = "16px Verdana";
+        ctx.textAlign="center";
+        ctx.fillStyle = 'rgba(54, 162, 235, 0.8)';
+        ctx.fillText(val+"°",20,20);
+        ctx.beginPath();
+        ctx.arc(e.width/2, e.height/2, 60, 2*Math.PI, 0);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+        ctx.stroke();
+        ctx.fillText("N",e.width/2,20);
+        ctx.fillText("S",e.width/2,140);
+        ctx.fillText("W",40,80);
+        ctx.fillText("E",160,80);
+
+        ctx.save();
+        ctx.translate(e.width/2, e.height/2);
+        ctx.rotate(((360-val)/180)*Math.PI);
+        ctx.translate(-e.width/2, -e.height/2);
+        ctx.beginPath();
+        ctx.rect((e.width/2)-15,(e.height/2)-20,30,40);
+        ctx.rect((e.width/2)-10,(e.height/2)-23 ,20,3);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(88, 88, 88, 1)';
+
+        ctx.roundRect((e.width/2)-20,(e.height/2)-15 ,5,10,3);
+        ctx.roundRect((e.width/2)-20,(e.height/2)+5 ,5,10,3);
+        ctx.roundRect((e.width/2)+15,(e.height/2)-15 ,5,10,3);
+        ctx.roundRect((e.width/2)+15,(e.height/2)+5 ,5,10,3);
+        ctx.fill();
+        ctx.restore();
+    }
+
+
+    function createTiltXView(val) {
+        let c = document.createElement("canvas");
+        let e = document.createElement("div");
+        e.id = name;
+        e.className = "canvastile";
+        e.width = "200";
+        e.height = "150";
+        c.width = "200";
+        c.height = "150";
+        e.appendChild(c);
+        document.getElementById("metrics").appendChild(e);
+        var ctx = c.getContext('2d');
+
+        ctx.font = "16px Verdana";
+        ctx.textAlign="center";
+        ctx.fillStyle = 'rgba(54, 162, 235, 0.8)';
+        ctx.fillText(val+"°",20,20);
+        ctx.beginPath();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+        ctx.moveTo(0,e.height/2);
+        ctx.lineTo(e.width,e.height/2);
+        ctx.stroke();
+
+        let rotationOffset = (val>0)?-30:30;
+        ctx.save();
+        ctx.translate(e.width/2+rotationOffset, e.height/2);
+        ctx.rotate(((360-val)/180)*Math.PI);
+        ctx.translate(-e.width/2-rotationOffset, -e.height/2);
+        ctx.beginPath();
+        ctx.rect((e.width/2)-40,(e.height/2)-30 ,80,20);
+        ctx.rect((e.width/2)-45,(e.height/2)-25 ,6,15);
+        ctx.moveTo((e.width/2)-30, (e.height/2)-30);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(88, 88, 88, 1)';
+        ctx.arc((e.width/2)-25, (e.height/2)-10,10,0,Math.PI*2);
+        ctx.arc((e.width/2)+25, (e.height/2)-10,10,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function createTiltYView(val) {
+        let c = document.createElement("canvas");
+        let e = document.createElement("div");
+        e.id = name;
+        e.className = "canvastile";
+        e.width = "200";
+        e.height = "150";
+        c.width = "200";
+        c.height = "150";
+        e.appendChild(c);
+        document.getElementById("metrics").appendChild(e);
+        var ctx = c.getContext('2d');
+
+        ctx.font = "16px Verdana";
+        ctx.textAlign="center";
+        ctx.fillStyle = 'rgba(54, 162, 235, 0.8)';
+        ctx.fillText(val+"°",20,20);
+        ctx.beginPath();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+        ctx.moveTo(0,e.height/2);
+        ctx.lineTo(e.width,e.height/2);
+        ctx.stroke();
+
+        let rotationOffset = (val>0)?-30:30;
+        ctx.save();
+        ctx.translate(e.width/2+rotationOffset, e.height/2);
+        ctx.rotate(((360-val)/180)*Math.PI);
+        ctx.translate(-e.width/2-rotationOffset, -e.height/2);
+        ctx.beginPath();
+        ctx.rect((e.width/2)-30,(e.height/2)-30 ,60,20);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(88, 88, 88, 1)';
+        ctx.roundRect((e.width/2)-40,(e.height/2)-20 ,10,20,3);
+        ctx.roundRect((e.width/2)+30,(e.height/2)-20 ,10,20,3);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function init() {
+            //connectWebSocket();
+            //connectLogWebSocket();
+            createCompass(30);
+            createTiltXView(-30);
+            createTiltXView(30);
+            createTiltYView(45);
+            createTiltYView(-45);
+    }
     </script>
 </head>
 
