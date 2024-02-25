@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="yes" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
 <layer number="16" name="Bottom" color="1" fill="1" visible="no" active="no"/>
@@ -7367,28 +7367,6 @@ Grid 5.00 mm&lt;p&gt;
 <label x="-50.8" y="137.16" size="1.778" layer="95" xref="yes" grouprefs="DRIVER1"/>
 </segment>
 </net>
-<net name="P40" class="0">
-<segment>
-<wire x1="-68.58" y1="-27.94" x2="-66.04" y2="-27.94" width="0.1524" layer="91" grouprefs="DRIVER4"/>
-<label x="-66.04" y="-27.94" size="1.778" layer="95" xref="yes" grouprefs="DRIVER4"/>
-<pinref part="M1DRV3" gate="G$1" pin="IN1"/>
-</segment>
-<segment>
-<wire x1="-68.58" y1="27.94" x2="-66.04" y2="27.94" width="0.1524" layer="91" grouprefs="DRIVER3"/>
-<label x="-66.04" y="27.94" size="1.778" layer="95" xref="yes" grouprefs="DRIVER3"/>
-<pinref part="M1DRV2" gate="G$1" pin="IN1"/>
-</segment>
-<segment>
-<wire x1="-68.58" y1="83.82" x2="-66.04" y2="83.82" width="0.1524" layer="91" grouprefs="DRIVER2"/>
-<label x="-66.04" y="83.82" size="1.778" layer="95" xref="yes" grouprefs="DRIVER2"/>
-<pinref part="M1DRV1" gate="G$1" pin="IN1"/>
-</segment>
-<segment>
-<pinref part="M1DRV" gate="G$1" pin="IN1"/>
-<wire x1="-68.58" y1="139.7" x2="-66.04" y2="139.7" width="0.1524" layer="91" grouprefs="DRIVER1"/>
-<label x="-66.04" y="139.7" size="1.778" layer="95" xref="yes" grouprefs="DRIVER1"/>
-</segment>
-</net>
 <net name="P39SONARECHO" class="0">
 <segment>
 <pinref part="1K1" gate="G$1" pin="2"/>
@@ -7666,6 +7644,26 @@ Grid 5.00 mm&lt;p&gt;
 <pinref part="GND" gate="A" pin="8"/>
 <wire x1="106.68" y1="73.66" x2="121.92" y2="73.66" width="0.1524" layer="91"/>
 <label x="106.68" y="73.66" size="1.778" layer="95" rot="R180" xref="yes"/>
+</segment>
+<segment>
+<wire x1="-68.58" y1="-27.94" x2="-66.04" y2="-27.94" width="0.1524" layer="91" grouprefs="DRIVER4"/>
+<label x="-66.04" y="-27.94" size="1.778" layer="95" xref="yes" grouprefs="DRIVER4"/>
+<pinref part="M1DRV3" gate="G$1" pin="IN1"/>
+</segment>
+<segment>
+<wire x1="-68.58" y1="27.94" x2="-66.04" y2="27.94" width="0.1524" layer="91" grouprefs="DRIVER3"/>
+<label x="-66.04" y="27.94" size="1.778" layer="95" xref="yes" grouprefs="DRIVER3"/>
+<pinref part="M1DRV2" gate="G$1" pin="IN1"/>
+</segment>
+<segment>
+<wire x1="-68.58" y1="83.82" x2="-66.04" y2="83.82" width="0.1524" layer="91" grouprefs="DRIVER2"/>
+<label x="-66.04" y="83.82" size="1.778" layer="95" xref="yes" grouprefs="DRIVER2"/>
+<pinref part="M1DRV1" gate="G$1" pin="IN1"/>
+</segment>
+<segment>
+<pinref part="M1DRV" gate="G$1" pin="IN1"/>
+<wire x1="-68.58" y1="139.7" x2="-66.04" y2="139.7" width="0.1524" layer="91" grouprefs="DRIVER1"/>
+<label x="-66.04" y="139.7" size="1.778" layer="95" xref="yes" grouprefs="DRIVER1"/>
 </segment>
 </net>
 <net name="N$5" class="0">
