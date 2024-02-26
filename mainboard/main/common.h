@@ -25,4 +25,10 @@ typedef struct
     uint8_t angle_arm;
     uint8_t angle_grapple;
     uint8_t controller_battery;
+    uint16_t temperature;
+    uint16_t humidity;
+    uint16_t pressure;
+    int8_t roll;
+    int8_t pitch;
+    int8_t heading;
 } metrics_t;

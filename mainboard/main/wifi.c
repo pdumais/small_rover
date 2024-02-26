@@ -152,6 +152,18 @@ bool wifi_init()
     return true;
 }
 
+char *to_fixed(uint16_t val, char *fixed_num)
+{
+    int n = sprintf(fixed_num, "%i", val);
+    if (n > 1)
+    {
+        fixed_num[n] = fixed_num[n - 1];
+        fixed_num[n - 1] = '.';
+        fixed_num[n + 1] = 0;
+    }
+    return fixed_num;
+}
+
 void broadcast_metric(metrics_t *metrics)
 {
     if (!sock)
@@ -162,12 +174,6 @@ void broadcast_metric(metrics_t *metrics)
     int n = 0;
 
     char fixed_num[10] = {0};
-    n = sprintf(fixed_num, "%i", metrics->speed);
-    if (n > 1)
-    {
-        fixed_num[n] = fixed_num[n - 1];
-        fixed_num[n - 1] = '.';
-    }
 
     char str[400];
     n = 0;
@@ -185,26 +191,32 @@ void broadcast_metric(metrics_t *metrics)
     n += sprintf(str + n, "rpm3: %i, ", metrics->rpm3);
     n += sprintf(str + n, "rpm4: %i, ", metrics->rpm4);
     n += sprintf(str + n, "ctrl_battery: %i, ", metrics->controller_battery);
-    n += sprintf(str + n, "speed: %s\n", fixed_num);
+    n += sprintf(str + n, "temp: %s, ", to_fixed(metrics->temperature, fixed_num));
+    n += sprintf(str + n, "pressure: %s, ", to_fixed(metrics->pressure, fixed_num));
+    n += sprintf(str + n, "hum: %s, ", to_fixed(metrics->humidity, fixed_num));
+    n += sprintf(str + n, "roll: %i, ", metrics->roll);   // tilt angle from the side
+    n += sprintf(str + n, "pitch: %i, ", metrics->pitch); // tilt angle from front to back
+    n += sprintf(str + n, "heading: %i, ", metrics->heading);
+    n += sprintf(str + n, "speed: %s\n", to_fixed(metrics->speed, fixed_num));
     ESP_LOGI(TAG, "%s", str);
 
-    //struct sockaddr_in addr;
-    //addr.sin_family = AF_INET;
-    //addr.sin_port = htons(242);
-    //addr.sin_addr.s_addr = inet_addr("192.168.4.2");
-    //int err = sendto(sock, str, n + 1, 0, (struct sockaddr *)&addr, sizeof(addr));
-    //if (err < 0)
+    // struct sockaddr_in addr;
+    // addr.sin_family = AF_INET;
+    // addr.sin_port = htons(242);
+    // addr.sin_addr.s_addr = inet_addr("192.168.4.2");
+    // int err = sendto(sock, str, n + 1, 0, (struct sockaddr *)&addr, sizeof(addr));
+    // if (err < 0)
     //{
-    //}
+    // }
     broadcast_ws(str, 1);
 }
 
 void broadcast_log(const char *str)
 {
     broadcast_ws(str, 2);
-//    struct sockaddr_in addr;
- //   addr.sin_family = AF_INET;
-  //  addr.sin_port = htons(242);
-   // addr.sin_addr.s_addr = inet_addr("192.168.4.2");
-    //int err = sendto(sock, str, strlen(str), 0, (struct sockaddr *)&addr, sizeof(addr));
+    //    struct sockaddr_in addr;
+    //   addr.sin_family = AF_INET;
+    //  addr.sin_port = htons(242);
+    // addr.sin_addr.s_addr = inet_addr("192.168.4.2");
+    // int err = sendto(sock, str, strlen(str), 0, (struct sockaddr *)&addr, sizeof(addr));
 }
