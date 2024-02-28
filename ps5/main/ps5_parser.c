@@ -386,7 +386,7 @@ ps5_status_t parsePacketStatus_extended(uint8_t *packet)
 {
   ps5_status_t ps5Status;
 
-  ps5Status.battery = packet[56] & ps5_status_mask_battery;
+  ps5Status.battery = (packet[55] & ps5_status_mask_battery) * 10;
 
   return ps5Status;
 }

@@ -111,12 +111,12 @@ static void sensor_task()
     while (1)
     {
 
-        ESP_ERROR_CHECK(bmx280_setMode(bmx280, BMX280_MODE_FORCE));
+        bmx280_setMode(bmx280, BMX280_MODE_FORCE);
         while (bmx280_isSampling(bmx280))
         {
             vTaskDelay(20 / portTICK_PERIOD_MS);
         }
-        ESP_ERROR_CHECK(bmx280_readoutFloat(bmx280, &temperature, &pressure, &humidity));
+        bmx280_readoutFloat(bmx280, &temperature, &pressure, &humidity);
         metrics.temperature = temperature * 10;
         metrics.humidity = humidity * 10;
         metrics.pressure = pressure / 100;
@@ -195,12 +195,16 @@ void sensors_init()
     {
         bmx280 = 0;
         ESP_LOGI(TAG, "BME280 not found");
+        return;
     }
     else
     {
 
         bmx280_config_t bmx_cfg = BMX280_DEFAULT_CONFIG;
-        ESP_ERROR_CHECK(bmx280_configure(bmx280, &bmx_cfg));
+        if (bmx280_configure(bmx280, &bmx_cfg) != ESP_OK)
+        {
+            return;
+        }
     }
 
     uint8_t accel_config[2] = {LSM303_CTRL_REG1_A, 0x67};

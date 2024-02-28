@@ -1,3 +1,7 @@
+*.s#*
+*.b#*
+*.FCBak
+*.step
 .vscode
 mainboard/bt_debug
 mainboard/build/

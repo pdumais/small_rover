@@ -38,4 +38,4 @@
 #define GPIO_ARM_SERVO2 GPIO_NUM_47 // Boom (ly)
 #define GPIO_OUTPUT_LED GPIO_NUM_48
 
-#define WHEEL_SIZE_MM 100
+#define WHEEL_SIZE_MM 358 // 57*2*3.14

@@ -401,7 +401,7 @@ static void ps5_l2cap_data_ind_cback(uint16_t l2cap_cid, BT_HDR *p_buf)
         }
         else if (report_id == 0x31)
         {
-            // ESP_LOGI(ps5_TAG, "0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x\n", p_buf->data[p_buf->offset + 2], p_buf->data[p_buf->offset + 3], p_buf->data[p_buf->offset + 4], p_buf->data[p_buf->offset + 5], p_buf->data[p_buf->offset + 6], p_buf->data[p_buf->offset + 7]);
+            // ESP_LOGI(ps5_TAG, "0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x\n", p_buf->data[p_buf->offset + 52], p_buf->data[p_buf->offset + 53], p_buf->data[p_buf->offset + 54], p_buf->data[p_buf->offset + 55], p_buf->data[p_buf->offset + 56], p_buf->data[p_buf->offset + 57]);
             parsePacket_extended(&p_buf->data[p_buf->offset]);
         }
     }
