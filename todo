@@ -1,4 +1,10 @@
 # Tasks
+    telemetry
+        charts
+            live update
+        doc: telemetry using ws, and for logs.
+              screenshot
+
     Obstacle detection 
         when entering driving mode, must check for obstruction and block trigger + rumble
         while driving, detect object from a longer distance to give time to brake
