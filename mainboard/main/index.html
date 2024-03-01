@@ -1,6 +1,8 @@
+<!DOCTYPE html>
 <html>
 
 <head>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -9,61 +11,65 @@
             padding-top: 25px;
             font-family: Verdana, sans-serif;
             padding: 10px;
-            max-width:970px;
-            
+            max-width: 970px;
+
         }
 
         .logs {
             font-family: "Andale Mono", AndaleMono, monospace;
             font-size: 12px;
-            width:100%;
+            width: 100%;
             height: 200px;
-            border: 1px solid rgba(0,0,0,0.1);
-            border-radius:5px;
-            overflow:scroll;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            overflow: scroll;
             background-color: #22313f;
             color: rgba(54, 162, 235, 1);
             padding: 5px;
-            max-width:950px;
+            max-width: 950px;
         }
 
         .rawmetrics {
             font-family: "Andale Mono", AndaleMono, monospace;
             font-size: 12px;
-            display:flex;
-            width:100%;
-            max-width:950px;
-            flex-wrap:wrap;
+            display: flex;
+            width: 100%;
+            max-width: 950px;
+            flex-wrap: wrap;
             background-color: #22313f;
             color: rgba(54, 162, 235, 1);
             padding: 5px;
-            border: 1px solid rgba(0,0,0,0.1);
-            border-radius:5px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
         }
-        .rawmetrics span
-        {
-            margin-right:10px;
+
+        .rawmetrics span {
+            margin-right: 10px;
             margin-bottom: 10px;
             white-space: nowrap;
-            padding:5px;
-            width:140px;
+            padding: 5px;
+            width: 140px;
         }
+
         .canvastile {
-            border: 1px solid rgba(0,0,0,0.2);
+            border: 1px solid rgba(0, 0, 0, 0.2);
             padding: 10px;
-            display:inline-flex;
-            margin-right:20px;
-            margin-bottom:20px; 
-            box-shadow: 5px 5px 5px rgba(0,0,0,0.1);
+            display: inline-flex;
+            margin-right: 20px;
+            margin-bottom: 20px;
+            box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.1);
         }
+
         .metricscol {
-            display:flex;
+            display: flex;
             flex-direction: row;
         }
+
         .metricskey {
             padding: 5px;
             width: 100px;
         }
+
         .metricsval {
             padding: 5px;
 
@@ -72,319 +78,458 @@
     <script>
         let socket;
 
-    function updateMetrics(metrics)
-    {
-        console.log(metrics);
-        let m = metrics.reduce((acc, val) => {
-            acc += "<span>"+val.key+":"+val.val+"</span>";
-            return acc;
-        },"");
+        function updateMetrics(metrics) {
+            let m = metrics.reduce((acc, val) => {
+                acc += "<span>" + val.key + ":" + val.val + "</span>";
+                return acc;
+            }, "");
 
-        document.getElementById("raw").innerHTML = m;
-        document.getElementById("metrics").innerHTML = "";
-        createGauge("pwm",6000, 8192);
-        createGauge("throttle",200, 256);
-        createGauge("speed",2,10);
-        createBatteryGauge("ctrl_battery", 55);
-        createBatteryGauge("main_battery", 87);
-        createAngleGauge("arm_rotation", -35);
-        createAngleGauge("arm_boom", 0);
-        createAngleGauge("arm_arm", 20);
-        createAngleGauge("arm_grapple", 90);
-        createBars("rpm",[200,204,198,201]);
-        createHumidity(55);
-        createTemperature(20);
-    }
+            document.getElementById("raw").innerHTML = m;
+            document.getElementById("metrics").innerHTML = "";
 
-    function connectWebSocket() {
-        const url = "ws://" + window.location.host + "/telemetry";
+            let o = metrics.reduce((acc, val) => {
+                acc[val.key] = val.val;
+                return acc;
+            }, {});
+            console.log(o);
 
-        socket = new WebSocket(url);
-
-        socket.onopen = () => {
-            console.log('WebSocket connection opened');
-        };
-
-        socket.onmessage = (event) => {
-            const data = event.data.split(",").map(elem => {
-                let vals = elem.split(":");
-                return {key:vals[0], val:vals[1]};
-            });
-            updateMetrics(data);
-        };
-
-        socket.onclose = (event) => {
-            console.log("connection closed");
-            if (!event.wasClean) {
-                setTimeout(connectWebSocket, 2000);
-            }
-        };
-
-        socket.onerror = (error) => {
-            console.log('WebSocket error:', error);
-        };
-    }
-
-    function connectLogWebSocket() {
-        const url = "ws://" + window.location.host + "/logs";
-
-        socket = new WebSocket(url);
-
-        socket.onopen = () => {
-            console.log('Logs WebSocket connection opened');
-        };
-
-        socket.onmessage = (event) => {
-            const data = event.data;
-            let div = document.createElement("div");
-            div.innerText = data;
-            document.getElementById("logs").appendChild(div);
-        };
-
-        socket.onclose = (event) => {
-            console.log("Log connection closed");
-            if (!event.wasClean) {
-                setTimeout(connectLogWebSocket, 2000);
-            }
-        };
-
-        socket.onerror = (error) => {
-            console.log('Log WebSocket error:', error);
-        };
-    }
-
-    function createGauge(name, val, max) {
-        let c = document.createElement("canvas");
-        let e = document.createElement("div");
-        e.id = name;
-        e.className = "canvastile";
-        e.width = "200";
-        e.height = "150";
-        c.width = "200";
-        c.height = "150";
-        //e.style= "height:150px; width:100%;max-width:150px";
-        e.appendChild(c);
-        document.getElementById("metrics").appendChild(e);
-        var ctx = c.getContext('2d');
-        ctx.font = "16px Verdana";
-        ctx.textAlign="center";
-        ctx.fillText(name,e.width/2,20);
-        ctx.fillText(val,e.width/2,110);
-        ctx.beginPath();
-        ctx.arc(101, 100, 50, -Math.PI, -Math.PI+(val*Math.PI/max));
-        ctx.lineWidth = 20;
-        ctx.strokeStyle = 'rgba(54, 162, 235, 0.2)';
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(101, 100, 60, -Math.PI, 0);
-        ctx.moveTo(40,100);
-        ctx.arc(101, 100, 40, -Math.PI, 0);
-        ctx.moveTo(140,101);
-        ctx.lineTo(162,101);
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
-        ctx.stroke();
-    }
-
-    function createBatteryGauge(name, val) {
-        let max = 100;
-        let e = document.createElement("div");
-        e.id = name;
-        e.className = "canvastile";
-        e.width = "200";
-        e.height = "150";
-        let c = document.createElement("canvas");
-        c.width = "200";
-        c.height = "150";
-        e.appendChild(c);
-        document.getElementById("metrics").appendChild(e);
-
-        var ctx = c.getContext('2d');
-        ctx.font = "16px Verdana";
-        ctx.textAlign="center";
-        ctx.fillText(name,e.width/2,20);
-        ctx.beginPath();
-        ctx.roundRect(50,50,100,50,5);
-        ctx.roundRect(150,65,10,20,[0,2,2,0]);
-        ctx.strokeStyle = 'rgba(54, 162, 235, 1)';
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.roundRect(55,55,25,40,1);
-        ctx.roundRect(85,55,25,40,1);
-        ctx.roundRect(115,55,25,40,1);
-        ctx.fillStyle = 'rgba(54, 162, 235, '+(val/2/100)+')';
-        ctx.fill();
-
-        ctx.fillStyle = 'black';
-        ctx.fillText(val+"%",e.width/2,80);
-    }
-
-    function createAngleGauge(name, val) {
-        let max = 100;
-        let c = document.createElement("canvas");
-        let e = document.createElement("div");
-        e.id = name;
-        e.className = "canvastile";
-        e.width = "200";
-        e.height = "150";
-        c.width = "200";
-        c.height = "150";
-        //e.style= "height:150px; width:100%;max-width:150px";
-        e.appendChild(c);
-        document.getElementById("metrics").appendChild(e);
-        var ctx = c.getContext('2d');
-        ctx.font = "16px Verdana";
-        ctx.textAlign="center";
-        ctx.fillText(name,e.width/2,20);
-        ctx.fillText(val,e.width/2,110);
-
-        ctx.beginPath();
-        ctx.arc(101, 100, 50, -Math.PI, 0);
-        ctx.lineWidth = 20;
-        ctx.strokeStyle = 'rgba(54, 162, 235, 0.2)';
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(101, 100, 50, (Math.PI*val/180)-(Math.PI/2), (Math.PI*val/180)-(Math.PI/2)+0.05);
-        ctx.lineWidth = 20;
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(101, 100, 60, -Math.PI, 0);
-        ctx.moveTo(40,100);
-        ctx.arc(101, 100, 40, -Math.PI, 0);
-        ctx.moveTo(140,101);
-        ctx.lineTo(162,101);
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
-        ctx.stroke();
-    }
-
-    function createTemperature(val) {
-        let c = document.createElement("canvas");
-        let e = document.createElement("div");
-        e.id = name;
-        e.className = "canvastile";
-        e.width = "200";
-        e.height = "150";
-        c.width = "200";
-        c.height = "150";
-        e.appendChild(c);
-        document.getElementById("metrics").appendChild(e);
-        var ctx = c.getContext('2d');
-        ctx.font = "16px Verdana";
-        ctx.textAlign="center";
-        ctx.fillText(val+"C",30+ e.width/2,60);
-
-        let x = 100 ;
-        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
-        ctx.lineWidth = 1;
-        ctx.fillStyle = 'rgba(54, 162, 235, 0.2)'
-        ctx.beginPath();
-        ctx.arc(x,100,20,-1,Math.PI+1);
-        ctx.moveTo(x-10,20)
-        ctx.arc(x,20,10,-Math.PI,0);
-        ctx.moveTo(x-10,20);
-        ctx.lineTo(x-10,84);
-        ctx.moveTo(x+10,20);
-        ctx.lineTo(x+10,84);
-        for (y=30; y<90; y+=20)
-        {
-            ctx.moveTo(x+3,y);
-            ctx.lineTo(x+10,y);
+            createGauge("pwm", o.pwm, 8192);
+            createGauge("throttle", o.throttle, 256);
+            createGauge("speed", o.speed, 10);
+            createBatteryGauge("ctrl_battery", o.ctrl_battery);
+            createBatteryGauge("main_battery", 0);
+            createAngleGauge("arm_rotation", o.rotator_angle);
+            createAngleGauge("arm_boom", o.boom_angle);
+            createAngleGauge("arm_arm", o.arm_angle);
+            createAngleGauge("arm_grapple", o.grapple_angle);
+            createAngleGauge("steering", o.steering_angle);
+            createBars("rpm", [o.rpm1, o.rpm2, o.rpm3, o.rpm4]);
+            createHumidity(o.hum);
+            createTemperature(o.temp);
+            createCompass(o.heading);
+            createTiltYView(o.roll);
+            createTiltXView(o.pitch);
         }
-        ctx.stroke();
 
-        let h=50;
-        ctx.beginPath();
-        ctx.moveTo(x,100)
-        ctx.arc(x,100,18,0,2*Math.PI);
-        ctx.rect(x-9,100-h,18,h)
-        ctx.fill();
-  }
+        function connectWebSocket() {
+            const url = "ws://" + window.location.host + "/telemetry";
 
-  function createHumidity(val) {
-        let c = document.createElement("canvas");
-        let e = document.createElement("div");
-        e.id = name;
-        e.className = "canvastile";
-        e.width = "200";
-        e.height = "150";
-        c.width = "200";
-        c.height = "150";
-        e.appendChild(c);
-        document.getElementById("metrics").appendChild(e);
-        var ctx = c.getContext('2d');
-        ctx.font = "16px Verdana";
-        ctx.textAlign="center";
-        ctx.fillText(val+"%",e.width/2,90);
+            socket = new WebSocket(url);
 
-        let x = 100 ;
-        ctx.beginPath();
-        ctx.lineJoin = 'miter';
-        ctx.moveTo(x, 20);
-        ctx.quadraticCurveTo(x-2.5, 30, x+28, 68);
-        ctx.arc(x, 88, 34.5, 5.75, 3.66, false);
-        ctx.quadraticCurveTo(x-2.5, 35, x, 20);
-        ctx.closePath();
-        ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
-        ctx.lineWidth = 2;
-        ctx.fillStyle = 'rgba(54, 162, 235, 0.2)'
-        ctx.stroke();
-        ctx.fill();
-  }
+            socket.onopen = () => {
+                console.log('WebSocket connection opened');
+            };
 
-    function createBars(name,datas) {
-        let max = 256;
-        let c = document.createElement("canvas");
-        let e = document.createElement("div");
-        e.id = name;
-        e.className = "canvastile";
-        e.width = "200";
-        e.height = "150";
-        c.width = "200";
-        c.height = "150";
-        //e.style= "height:150px; width:100%;max-width:150px";
-        e.appendChild(c);
-        document.getElementById("metrics").appendChild(e);
-        var ctx = c.getContext('2d');
-        ctx.font = "16px Verdana";
-        ctx.textAlign="center";
-        ctx.fillText(name,e.width/2,20);
-        let y = 40;
-        let w = 200;
-        let h = 20;
-        datas.forEach(d => {
+            socket.onmessage = (event) => {
+                const data = event.data.split(",").map(elem => {
+                    let vals = elem.split(":");
+                    return { key: vals[0].trim(), val: vals[1].trim() };
+                });
+                updateMetrics(data);
+            };
+
+            socket.onclose = (event) => {
+                console.log("connection closed");
+                if (!event.wasClean) {
+                    setTimeout(connectWebSocket, 2000);
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.log('WebSocket error:', error);
+            };
+        }
+
+        function connectLogWebSocket() {
+            const url = "ws://" + window.location.host + "/logs";
+
+            socket = new WebSocket(url);
+
+            socket.onopen = () => {
+                console.log('Logs WebSocket connection opened');
+            };
+
+            socket.onmessage = (event) => {
+                const data = event.data;
+                let div = document.createElement("div");
+                div.innerText = data;
+                document.getElementById("logs").appendChild(div);
+            };
+
+            socket.onclose = (event) => {
+                console.log("Log connection closed");
+                if (!event.wasClean) {
+                    setTimeout(connectLogWebSocket, 2000);
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.log('Log WebSocket error:', error);
+            };
+        }
+
+        function createGauge(name, val, max) {
+            let c = document.createElement("canvas");
+            let e = document.createElement("div");
+            e.id = name;
+            e.className = "canvastile";
+            e.width = "200";
+            e.height = "150";
+            c.width = "200";
+            c.height = "150";
+            //e.style= "height:150px; width:100%;max-width:150px";
+            e.appendChild(c);
+            document.getElementById("metrics").appendChild(e);
+            var ctx = c.getContext('2d');
+            ctx.font = "16px Verdana";
+            ctx.textAlign = "center";
+            ctx.fillText(name, e.width / 2, 20);
+            ctx.fillText(val, e.width / 2, 110);
             ctx.beginPath();
-            ctx.rect(0,y,w*(d/max),h);
-            ctx.fillStyle = 'rgba(54, 162, 235, 0.2)';
+            ctx.arc(101, 100, 50, -Math.PI, -Math.PI + (val * Math.PI / max));
+            ctx.lineWidth = 20;
+            ctx.strokeStyle = 'rgba(54, 162, 235, 0.2)';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(101, 100, 60, -Math.PI, 0);
+            ctx.moveTo(40, 100);
+            ctx.arc(101, 100, 40, -Math.PI, 0);
+            ctx.moveTo(140, 101);
+            ctx.lineTo(162, 101);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+            ctx.stroke();
+        }
+
+        function createBatteryGauge(name, val) {
+            let max = 100;
+            let e = document.createElement("div");
+            e.id = name;
+            e.className = "canvastile";
+            e.width = "200";
+            e.height = "150";
+            let c = document.createElement("canvas");
+            c.width = "200";
+            c.height = "150";
+            e.appendChild(c);
+            document.getElementById("metrics").appendChild(e);
+
+            var ctx = c.getContext('2d');
+            ctx.font = "16px Verdana";
+            ctx.textAlign = "center";
+            ctx.fillText(name, e.width / 2, 20);
+            ctx.beginPath();
+            ctx.roundRect(50, 50, 100, 50, 5);
+            ctx.roundRect(150, 65, 10, 20, [0, 2, 2, 0]);
+            ctx.strokeStyle = 'rgba(54, 162, 235, 1)';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.roundRect(55, 55, 25, 40, 1);
+            ctx.roundRect(85, 55, 25, 40, 1);
+            ctx.roundRect(115, 55, 25, 40, 1);
+            ctx.fillStyle = 'rgba(54, 162, 235, ' + (val / 2 / 100) + ')';
             ctx.fill();
 
+            ctx.fillStyle = 'black';
+            ctx.fillText(val + "%", e.width / 2, 80);
+        }
+
+        function createAngleGauge(name, val) {
+            let max = 100;
+            let c = document.createElement("canvas");
+            let e = document.createElement("div");
+            e.id = name;
+            e.className = "canvastile";
+            e.width = "200";
+            e.height = "150";
+            c.width = "200";
+            c.height = "150";
+            //e.style= "height:150px; width:100%;max-width:150px";
+            e.appendChild(c);
+            document.getElementById("metrics").appendChild(e);
+            var ctx = c.getContext('2d');
+            ctx.font = "16px Verdana";
+            ctx.textAlign = "center";
+            ctx.fillText(name, e.width / 2, 20);
+            ctx.fillText(val, e.width / 2, 110);
+
+            ctx.beginPath();
+            ctx.arc(101, 100, 50, -Math.PI, 0);
+            ctx.lineWidth = 20;
+            ctx.strokeStyle = 'rgba(54, 162, 235, 0.2)';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(101, 100, 50, (Math.PI * val / 180) - (Math.PI / 2), (Math.PI * val / 180) - (Math.PI / 2) + 0.05);
+            ctx.lineWidth = 20;
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(101, 100, 60, -Math.PI, 0);
+            ctx.moveTo(40, 100);
+            ctx.arc(101, 100, 40, -Math.PI, 0);
+            ctx.moveTo(140, 101);
+            ctx.lineTo(162, 101);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+            ctx.stroke();
+        }
+
+        function createTemperature(val) {
+            let c = document.createElement("canvas");
+            let e = document.createElement("div");
+            e.id = name;
+            e.className = "canvastile";
+            e.width = "200";
+            e.height = "150";
+            c.width = "200";
+            c.height = "150";
+            e.appendChild(c);
+            document.getElementById("metrics").appendChild(e);
+            var ctx = c.getContext('2d');
+            ctx.font = "16px Verdana";
+            ctx.textAlign = "center";
+            ctx.fillText(val + "C", 34 + e.width / 2, 60);
+
+            let x = 100;
             ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
             ctx.lineWidth = 1;
-            ctx.strokeRect(0,y,w,h);
-            ctx.fillStyle = 'black';
-            ctx.fillText(d,e.width/2,y+15);
+            ctx.fillStyle = 'rgba(54, 162, 235, 0.2)'
+            ctx.beginPath();
+            ctx.arc(x, 100, 20, -1, Math.PI + 1);
+            ctx.moveTo(x - 10, 20)
+            ctx.arc(x, 20, 10, -Math.PI, 0);
+            ctx.moveTo(x - 10, 20);
+            ctx.lineTo(x - 10, 84);
+            ctx.moveTo(x + 10, 20);
+            ctx.lineTo(x + 10, 84);
+            for (y = 30; y < 90; y += 20) {
+                ctx.moveTo(x + 3, y);
+                ctx.lineTo(x + 10, y);
+            }
+            ctx.stroke();
 
-            y+=(h+10);
-        });
-    }
+            let h = 50;
+            ctx.beginPath();
+            ctx.moveTo(x, 100)
+            ctx.arc(x, 100, 18, 0, 2 * Math.PI);
+            ctx.rect(x - 9, 100 - h, 18, h)
+            ctx.fill();
+        }
+
+        function createHumidity(val) {
+            let c = document.createElement("canvas");
+            let e = document.createElement("div");
+            e.id = name;
+            e.className = "canvastile";
+            e.width = "200";
+            e.height = "150";
+            c.width = "200";
+            c.height = "150";
+            e.appendChild(c);
+            document.getElementById("metrics").appendChild(e);
+            var ctx = c.getContext('2d');
+            ctx.font = "16px Verdana";
+            ctx.textAlign = "center";
+            ctx.fillText(val + "%", e.width / 2, 90);
+
+            let x = 100;
+            ctx.beginPath();
+            ctx.lineJoin = 'miter';
+            ctx.moveTo(x, 20);
+            ctx.quadraticCurveTo(x - 2.5, 30, x + 28, 68);
+            ctx.arc(x, 88, 34.5, 5.75, 3.66, false);
+            ctx.quadraticCurveTo(x - 2.5, 35, x, 20);
+            ctx.closePath();
+            ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.fillStyle = 'rgba(54, 162, 235, 0.2)'
+            ctx.stroke();
+            ctx.fill();
+        }
+
+        function createBars(name, datas) {
+            let max = 256;
+            let c = document.createElement("canvas");
+            let e = document.createElement("div");
+            e.id = name;
+            e.className = "canvastile";
+            e.width = "200";
+            e.height = "150";
+            c.width = "200";
+            c.height = "150";
+            //e.style= "height:150px; width:100%;max-width:150px";
+            e.appendChild(c);
+            document.getElementById("metrics").appendChild(e);
+            var ctx = c.getContext('2d');
+            ctx.font = "16px Verdana";
+            ctx.textAlign = "center";
+            ctx.fillText(name, e.width / 2, 20);
+            let y = 40;
+            let w = 200;
+            let h = 20;
+            datas.forEach(d => {
+                ctx.beginPath();
+                ctx.rect(0, y, w * (d / max), h);
+                ctx.fillStyle = 'rgba(54, 162, 235, 0.2)';
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(0, y, w, h);
+                ctx.fillStyle = 'black';
+                ctx.fillText(d, e.width / 2, y + 15);
+
+                y += (h + 10);
+            });
+        }
+
+        function createCompass(val) {
+            let c = document.createElement("canvas");
+            let e = document.createElement("div");
+            e.id = name;
+            e.className = "canvastile";
+            e.width = "200";
+            e.height = "150";
+            c.width = "200";
+            c.height = "150";
+            e.appendChild(c);
+            document.getElementById("metrics").appendChild(e);
+            var ctx = c.getContext('2d');
+
+            ctx.font = "16px Verdana";
+            ctx.textAlign = "center";
+            ctx.fillStyle = 'rgba(54, 162, 235, 0.8)';
+            ctx.fillText(val + "°", 20, 20);
+            ctx.beginPath();
+            ctx.arc(e.width / 2, e.height / 2, 60, 2 * Math.PI, 0);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+            ctx.stroke();
+            ctx.fillText("N", e.width / 2, 20);
+            ctx.fillText("S", e.width / 2, 140);
+            ctx.fillText("W", 40, 80);
+            ctx.fillText("E", 160, 80);
+
+            ctx.save();
+            ctx.translate(e.width / 2, e.height / 2);
+            ctx.rotate(((360 - val) / 180) * Math.PI);
+            ctx.translate(-e.width / 2, -e.height / 2);
+            ctx.beginPath();
+            ctx.rect((e.width / 2) - 15, (e.height / 2) - 20, 30, 40);
+            ctx.rect((e.width / 2) - 10, (e.height / 2) - 23, 20, 3);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(88, 88, 88, 1)';
+
+            ctx.roundRect((e.width / 2) - 20, (e.height / 2) - 15, 5, 10, 3);
+            ctx.roundRect((e.width / 2) - 20, (e.height / 2) + 5, 5, 10, 3);
+            ctx.roundRect((e.width / 2) + 15, (e.height / 2) - 15, 5, 10, 3);
+            ctx.roundRect((e.width / 2) + 15, (e.height / 2) + 5, 5, 10, 3);
+            ctx.fill();
+            ctx.restore();
+        }
+
+
+        function createTiltXView(val) {
+            let c = document.createElement("canvas");
+            let e = document.createElement("div");
+            e.id = name;
+            e.className = "canvastile";
+            e.width = "200";
+            e.height = "150";
+            c.width = "200";
+            c.height = "150";
+            e.appendChild(c);
+            document.getElementById("metrics").appendChild(e);
+            var ctx = c.getContext('2d');
+
+            ctx.font = "16px Verdana";
+            ctx.textAlign = "center";
+            ctx.fillStyle = 'rgba(54, 162, 235, 0.8)';
+            ctx.fillText(val + "°", 20, 20);
+            ctx.beginPath();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+            ctx.moveTo(0, e.height / 2);
+            ctx.lineTo(e.width, e.height / 2);
+            ctx.stroke();
+
+            let rotationOffset = (val > 0) ? -30 : 30;
+            ctx.save();
+            ctx.translate(e.width / 2 + rotationOffset, e.height / 2);
+            ctx.rotate(((360 - val) / 180) * Math.PI);
+            ctx.translate(-e.width / 2 - rotationOffset, -e.height / 2);
+            ctx.beginPath();
+            ctx.rect((e.width / 2) - 40, (e.height / 2) - 30, 80, 20);
+            ctx.rect((e.width / 2) - 45, (e.height / 2) - 25, 6, 15);
+            ctx.moveTo((e.width / 2) - 30, (e.height / 2) - 30);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(88, 88, 88, 1)';
+            ctx.arc((e.width / 2) - 25, (e.height / 2) - 10, 10, 0, Math.PI * 2);
+            ctx.arc((e.width / 2) + 25, (e.height / 2) - 10, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function createTiltYView(val) {
+            let c = document.createElement("canvas");
+            let e = document.createElement("div");
+            e.id = name;
+            e.className = "canvastile";
+            e.width = "200";
+            e.height = "150";
+            c.width = "200";
+            c.height = "150";
+            e.appendChild(c);
+            document.getElementById("metrics").appendChild(e);
+            var ctx = c.getContext('2d');
+
+            ctx.font = "16px Verdana";
+            ctx.textAlign = "center";
+            ctx.fillStyle = 'rgba(54, 162, 235, 0.8)';
+            ctx.fillText(val + "°", 20, 20);
+            ctx.beginPath();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(54, 162, 235, 0.8)';
+            ctx.moveTo(0, e.height / 2);
+            ctx.lineTo(e.width, e.height / 2);
+            ctx.stroke();
+
+            let rotationOffset = (val > 0) ? -30 : 30;
+            ctx.save();
+            ctx.translate(e.width / 2 + rotationOffset, e.height / 2);
+            ctx.rotate(((360 - val) / 180) * Math.PI);
+            ctx.translate(-e.width / 2 - rotationOffset, -e.height / 2);
+            ctx.beginPath();
+            ctx.rect((e.width / 2) - 30, (e.height / 2) - 30, 60, 20);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(88, 88, 88, 1)';
+            ctx.roundRect((e.width / 2) - 40, (e.height / 2) - 20, 10, 20, 3);
+            ctx.roundRect((e.width / 2) + 30, (e.height / 2) - 20, 10, 20, 3);
+            ctx.fill();
+            ctx.restore();
+        }
 
         function init() {
             connectWebSocket();
             connectLogWebSocket();
-
         }
     </script>
 </head>
 
 <body onload="init()">
     <h1 style="width:100%; text-align: center;">Telemetry</h1>
-    <div id="metrics" >
+    <div id="metrics">
     </div>
+    <div id="raw" class="rawmetrics"></div>
+    Logs
+    <div id="logs" class="logs"></div>
     <div id="raw" class="rawmetrics"></div>
     Logs
     <div id="logs" class="logs"></div>
