@@ -4,6 +4,7 @@ This is work in progress, so no pictures of the final build yet
 
 
 
+[![Rover](https://img.youtube.com/vi/MDsiWHeAhvQ/0.jpg)](https://youtu.be/MDsiWHeAhvQ)
 [![Rover](https://img.youtube.com/vi/R3Qs6OE4Az8/0.jpg)](https://youtu.be/R3Qs6OE4Az8)
 
 
@@ -75,6 +76,13 @@ The battery sits on a foam to reduce vibrations.
 # Main board
 The main board is a piece of plywood on which all PCBs are screwed. It consists of the main ESP32 board, the PS5 controller ESP32 board and 2 small 5v regulators.
 
+** Update march 1st.
+I created a PCB design to make things a bit more cleaner. I dit not receive the board from the fab yet, but I'm planning on replacing the protoboard with this one
+
+<p style="text-align: center;"><img src='doc/board.png' width='550'></p>
+<p style="text-align: center;"><img src='doc/schematic.png' width='550'></p>
+
+
 # Mechanical Arm
 The goal was to be able to lift a 500ml can of beer.
 
@@ -101,9 +109,11 @@ To reduce power usage event more, only 1 servo per sticks can be used at the sam
 
 
 
-# Metrics
-The machine creates a WAP and has the IP address 192.168.4.1. It sends a UDP packet to 192.168.4.2:242 every second. This packet
-contains the metrics of the machine as defined in [mainboard/main/common.h](mainboard//main/common.h) in `struct metrics_t`
+# Telemetry
+The machine creates a WAP and has the IP address 192.168.4.1. It sends telemetry data over a websocket every second. This packet
+contains the metrics of the machine as defined in [mainboard/main/common.h](mainboard//main/common.h) in `struct metrics_t`. There is web page served on port 80 to render the raw data into a user friendly view.
+<p style="text-align: center;"><img src='doc/telemetry.png' width='550'> 
+
 
 # Wifi
 The vehicle creates a WAP called "ROVER". I've configured my router to auto-connect to that WAP and take the address 192.168.4.2.
@@ -132,12 +142,6 @@ of a consious choice to sacrifice performance to be able to use limited resource
 
 
 # Pictures
-
-Prototype of robotic arm with legos. It's not what I will end up building.
-![](doc/PXL_20240117_154853416.jpg)
-
-Wiring reference picture
-![](doc/PXL_20240117_155832882.jpg)
 
 Project status Jan 17
 ![](doc/PXL_20240120_234724846.jpg)
