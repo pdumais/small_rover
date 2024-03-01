@@ -177,7 +177,6 @@ void broadcast_metric(metrics_t *metrics)
     char fixed_num[10] = {0};
 
     char str[400];
-    char str[400];
     n = 0;
     n += sprintf(str, "throttle: %i, ", metrics->throttle);
     n += sprintf(str + n, "pwm: %i, ", metrics->pwm);
