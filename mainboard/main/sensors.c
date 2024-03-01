@@ -12,10 +12,6 @@
 #define LSM303_CTRL_REG1_A 0x20
 #define LSM303_CTRL_REG4_A 0x23
 #define LSM303_OUT_X_L_A 0x28
-#define LSM303_CTRL_REG1_M 0x20
-#define LSM303_CTRL_REG2_M 0x21
-#define LSM303_CTRL_REG3_M 0x22
-#define LSM303_CTRL_REG4_M 0x23
 #define LSM303_OUT_X_H_M 0x03
 
 static const char *TAG = "sensors_c";
@@ -71,15 +67,9 @@ static esp_err_t lsm303_write(uint8_t addr, const uint8_t *din, size_t size)
     }
 }
 
-static void compensate_magneto_with_tilt(int *mx, int *my, int *mz)
-{
-    *mx = *mx * cos(frontrear_tilt);
-    *my = *my * cos(rightleft_tilt);
-}
-
 static int get_magneto_angle(double mx, double my, double mz)
 {
-    return (180.0 * atan2(my, mx) / 3.1416) - 90.0;
+    return (180.0 * (atan2(my, mx) - (3.1416 / 2.0)) / 3.1416);
 }
 
 static void calculate_tilt(float x, float y, float z)
@@ -105,7 +95,8 @@ static void sensor_task()
     int16_t max_ax = -32767, max_ay = -32767, max_az = -32767;
     int16_t _ax = 0, _ay = 0, _az = 0;
     float ax = 0, ay = 0, az = 0;
-    uint16_t mx = 0, my = 0, mz = 0;
+    int16_t _mx = 0, _my = 0, _mz = 0;
+    float mx = 0, my = 0, mz = 0;
     float temperature, pressure, humidity;
 
     while (1)
@@ -122,11 +113,14 @@ static void sensor_task()
         metrics.pressure = pressure / 100;
 
         uint8_t data[6] = {0};
-        // lsm303_read(LSM303_ADDR_MAG, LSM303_OUT_X_H_M, data, 6);
-        // mx = (int16_t)(data[0] << 8 | data[1]);
-        // my = (int16_t)(data[2] << 8 | data[3]);
-        // mz = (int16_t)(data[4] << 8 | data[5]);
-        // ESP_LOGI(TAG, "mx=%i, my=%i, mz=%i", mx, my, mz);
+        lsm303_read(LSM303_ADDR_MAG, LSM303_OUT_X_H_M, data, 6);
+        _mx = (int16_t)(data[0] << 8 | data[1]);
+        _mz = (int16_t)(data[2] << 8 | data[3]);
+        _my = (int16_t)(data[4] << 8 | data[5]);
+        mx = ((float)_mx / 1100.0) * 100.0;
+        my = ((float)_my / 1100.0) * 100.0;
+        mz = ((float)_mz / 980.0) * 100.0;
+        metrics.heading = get_magneto_angle(mx, my, mz);
 
         lsm303_read(LSM303_ADDR_ACCEL, LSM303_OUT_X_L_A | 0x80, data, 6);
 
@@ -139,34 +133,6 @@ static void sensor_task()
         az = ((float)_az * 0.00782 * 9.80665F) + 2.0F;  // Offset observed when laying on a flat surface
         calculate_tilt(ax, ay, az);
         // ESP_LOGI(TAG, "ax=%f, ay=%f, az=%f", ax, ay, az);
-        /*lsm303_read_bytes(LSM303_ADDR_MAG, LSM303_OUT_X_L_M, mag_data, 6); //was X_H_M
-        data.mx = (int16_t)(mag_data[1] << 8 | mag_data[0]);
-        data.my = (int16_t)(mag_data[3] << 8 | mag_data[2]);
-        data.mz = (int16_t)(mag_data[5] << 8 | mag_data[4]);*/
-        // ESP_LOGI("test", "Read Values: temp = %0.1f, pres = %0.1f, hum = %f", temperature, pressure, humidity);
-        /*
-                ax = 0;
-                ay = 4.2;
-                az = 8.8;
-                mx = 39;
-                my = -4;
-                mz = -4;
-                calculate_tilt(ax, ay, az);
-                compensate_magneto_with_tilt(&mx, &my, &mz);
-                int direction = get_magneto_angle(mx, my, mz);
-                ESP_LOGI(TAG, "dir1=%i", direction);
-
-                ax = 0;
-                ay = 7;
-                az = 6.7;
-                mx = 16;
-                my = -31;
-                mz = 16;
-                calculate_tilt(ax, ay, az);
-                compensate_magneto_with_tilt(&mx, &my, &mz);
-                direction = get_magneto_angle(mx, my, mz);
-                ESP_LOGI(TAG, "dir2=%i", direction);*/
-
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
@@ -212,8 +178,15 @@ void sensors_init()
     accel_config[0] = LSM303_CTRL_REG4_A;
     accel_config[1] = 0b10000; // Set scale to 4g
     lsm303_write(LSM303_ADDR_ACCEL, accel_config, 2);
-    uint8_t mag_config[5] = {LSM303_CTRL_REG1_M, 0x1C, 0x00, 0x00, 0x00}; // 50 Hz, high power mode, continuous conversion
-    lsm303_write(LSM303_ADDR_MAG, mag_config, 5);
+
+    uint8_t mag_config[2] = {0x00, 0b11100};
+    lsm303_write(LSM303_ADDR_MAG, mag_config, 2);
+    mag_config[0] = 0x01;
+    mag_config[1] = 0b00100000;
+    lsm303_write(LSM303_ADDR_MAG, mag_config, 2);
+    mag_config[0] = 0x02;
+    mag_config[1] = 0x0;
+    lsm303_write(LSM303_ADDR_MAG, mag_config, 2);
 
     xTaskCreate(sensor_task, "check_sensors", 4096, NULL, 5, &check_sensors_task_handle);
 }

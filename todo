@@ -17,3 +17,5 @@ ps5 controller battery level is accurate?
 
 # Testing websocket
 curl -N -i -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" http://192.168.4.1/telemetry -vvv --output -
+
+https://youtu.be/MDsiWHeAhvQ
