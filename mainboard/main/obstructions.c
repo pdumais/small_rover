@@ -206,5 +206,7 @@ void obstruction_init_detection()
     servo_create(GPIO_DISTANCE_SERVO, &comparator);
     servo_set_angle(&comparator, servo_angle);
     hcsr04_init(GPIO_DISTANCE_TRIGGER, GPIO_DISTANCE_ECHO, &ultrasonic);
+
+    // TODO: Doesn't work well yet.
     xTaskCreate(check_obstructions_task, "check_obstructions", 4096, NULL, 5, &check_obstructions_task_handle);
 }

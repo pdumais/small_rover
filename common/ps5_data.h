@@ -118,5 +118,6 @@ typedef struct
 	ps5_sensor_t sensor;
 	bool latestPacket;
 	uint8_t controller_connected;
+	uint16_t main_battery;
 	uint8_t checksum;
 } __attribute__((packed)) ps5_t;

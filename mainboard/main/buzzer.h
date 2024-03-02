@@ -4,4 +4,5 @@
 void buzzer_init();
 void buzzer_set_on();
 void buzzer_set_off();
+void buzzer_set_freq(uint32_t f);
 void buzzer_set_intermitent(uint32_t on, uint32_t off);

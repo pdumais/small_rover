@@ -12,6 +12,7 @@ static QueueHandle_t xQueue;
 #define COMMAND_OFF 0
 #define COMMAND_ON 1
 #define COMMAND_INTERMITENT 2
+#define COMMAND_FREQ 3
 
 typedef struct
 {
@@ -20,6 +21,7 @@ typedef struct
     {
         uint32_t on;
         uint32_t off;
+        
     } flash_cmd;
 } q_msg;
 
@@ -42,6 +44,10 @@ void buzzer_task(void *arg)
             {
                 gpio_set_level(GPIO_BUZZER1, 1);
             }
+            else if (msg.command == COMMAND_FREQ)
+            {
+                //gpio_set_level(GPIO_BUZZER1, 1);
+            }
             else if (msg.command == COMMAND_INTERMITENT)
             {
                 uint8_t op = 0;
@@ -63,6 +69,15 @@ void buzzer_task(void *arg)
             }
         }
     }
+}
+
+void buzzer_set_freq(uint32_t f)
+{
+    q_msg msg;
+    msg.command = COMMAND_FREQ;
+    msg.flash_cmd.on = f;
+
+    xQueueSend(xQueue, (void *)&msg, 0);
 }
 
 void buzzer_set_on()

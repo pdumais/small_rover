@@ -25,6 +25,7 @@ typedef struct
     uint16_t angle_arm;
     uint16_t angle_grapple;
     uint8_t controller_battery;
+    uint16_t main_battery;
     uint16_t temperature;
     uint16_t humidity;
     uint16_t pressure;

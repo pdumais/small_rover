@@ -193,6 +193,7 @@ void broadcast_metric(metrics_t *metrics)
     n += sprintf(str + n, "rpm3: %i, ", metrics->rpm3);
     n += sprintf(str + n, "rpm4: %i, ", metrics->rpm4);
     n += sprintf(str + n, "ctrl_battery: %i, ", metrics->controller_battery);
+    n += sprintf(str + n, "main_battery: %i, ", metrics->main_battery);
     n += sprintf(str + n, "temp: %s, ", to_fixed(metrics->temperature, fixed_num));
     n += sprintf(str + n, "pressure: %s, ", to_fixed(metrics->pressure, fixed_num));
     n += sprintf(str + n, "hum: %s, ", to_fixed(metrics->humidity, fixed_num));

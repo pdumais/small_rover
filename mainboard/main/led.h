@@ -51,7 +51,7 @@ extern const led_pattern led_pattern_blue;
     p[0].r = 255;                      \
     led_set_rotating_pattern(&p, 200, 1)
 
-#define LED_SET_REVERSE_PATTERN() led_set_flashing_pattern(&led_pattern_red, 100, 100, 6)
+#define LED_SET_ERROR_PATTERN() led_set_flashing_pattern(&led_pattern_red, 100, 100, 6)
 #define LED_SET_ATTENTION_PATTERN()       \
     led_pattern p;                        \
     memset(&p, 255, sizeof(led_pattern)); \

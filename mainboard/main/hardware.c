@@ -62,6 +62,7 @@ static TaskHandle_t rpm_task;
 static QueueHandle_t main_queue;
 
 static fsm_state_t *fsm_current_state;
+void process_state_during_error_mode(uint8_t type, void *data, uint32_t old_state, uint32_t new_state);
 void process_state_during_driving_mode(uint8_t type, void *data, uint32_t old_state, uint32_t new_state);
 void process_state_during_recording_mode(uint8_t type, void *data, uint32_t old_state, uint32_t new_state);
 void process_state_during_replaying_mode(uint8_t type, void *data, uint32_t old_state, uint32_t new_state);
@@ -69,6 +70,7 @@ void process_state_during_arm_mode(uint8_t type, void *data, uint32_t old_state,
 void process_state_during_disconnected_mode(uint8_t type, void *data, uint32_t old_state, uint32_t new_state);
 void process_state_during_autonomous_mode(uint8_t type, void *data, uint32_t old_state, uint32_t new_state);
 
+static fsm_state_t fsm_state_error = {.cb = &process_state_during_error_mode};
 static fsm_state_t fsm_state_autonomous = {.cb = &process_state_during_autonomous_mode};
 static fsm_state_t fsm_state_driving = {.cb = &process_state_during_driving_mode};
 static fsm_state_t fsm_state_recording = {.cb = &process_state_during_recording_mode};
@@ -378,34 +380,58 @@ void process_state_during_autonomous_mode(uint8_t type, void *d, uint32_t curren
     // TODO: on obstruction event, start a sweep and take a decision
 }
 
+void on_enter_error_mode()
+{
+    metrics.horn = 0;
+    obstruction_enable_sweep(false);
+    buzzer_set_off();
+    LED_SET_ERROR_PATTERN();
+    laser_trigger(false);
+
+    broadcast_log("error state\n");
+    controller_message msg = {2, 1, 1, 1}; // lock forward buttons
+    send_to_uart(&msg);
+    controller_message msg2 = {3, 1, 0, 0}; // rumble
+    send_to_uart(&msg2);
+    set_throttle(0, 0);
+
+    fsm_current_state = &fsm_state_error;
+}
+
+void on_exit_error_mode()
+{
+    controller_message msg = {2, 0, 1, 1};
+    send_to_uart(&msg);
+}
+
+void process_state_during_error_mode(uint8_t type, void *d, uint32_t current_state, uint32_t new_state)
+{
+    if (type == MESSAGE_PS5)
+    {
+        if (is_now(current_state, new_state, STATE_BIT_CROSS))
+        {
+            on_exit_error_mode();
+            on_enter_driving_mode();
+            return;
+        }
+
+        return;
+    }
+}
+
 void process_state_during_driving_mode(uint8_t type, void *d, uint32_t current_state, uint32_t new_state)
 {
     if (type == MESSAGE_COLLISION)
     {
-        broadcast_log("Detected collision while driving\n");
-        controller_message msg2 = {3, 1, 0, 0}; // rumble
-        send_to_uart(&msg2);
-        set_throttle(0, 0);
+        on_exit_driving_mode();
+        on_enter_error_mode();
         return;
     }
 
     if (type == MESSAGE_OBSTRUCTION_DETECTED)
     {
-        broadcast_log("obstruction detected while driving\n");
-        controller_message msg = {2, 1, 0, 1}; // lock forward buttons
-        send_to_uart(&msg);
-        controller_message msg2 = {3, 1, 0, 0}; // rumble
-        send_to_uart(&msg2);
-        set_throttle(0, 0);
-        return;
-    }
-
-    if (type == MESSAGE_OBSTRUCTION_CLEARED)
-    {
-        broadcast_log("obstruction cleared while driving\n");
-        controller_message msg = {2, 0, 1, 1}; // unlock buttons
-        send_to_uart(&msg);
-        set_throttle(0, 0);
+        on_exit_driving_mode();
+        on_enter_error_mode();
         return;
     }
 
@@ -471,19 +497,12 @@ void process_state_during_driving_mode(uint8_t type, void *d, uint32_t current_s
     {
         // only do this after the transition
         metrics.horn = 1;
-        buzzer_set_intermitent(100, 100); // Anything below 100 should probably use the hardware PWM instead
+        buzzer_set_freq(100);
     }
     else if (was(current_state, new_state, STATE_BIT_HORN))
     {
         metrics.horn = 0;
-        if (is(new_state, STATE_BIT_REVERSE))
-        {
-            buzzer_set_intermitent(1000, 500);
-        }
-        else
-        {
-            buzzer_set_off();
-        }
+        buzzer_set_off();
     }
 
     if (is_now(current_state, new_state, STATE_BIT_LED))
@@ -492,46 +511,7 @@ void process_state_during_driving_mode(uint8_t type, void *d, uint32_t current_s
     }
     else if (was(current_state, new_state, STATE_BIT_LED))
     {
-        if (is(new_state, STATE_BIT_REVERSE))
-        {
-            LED_SET_REVERSE_PATTERN();
-        }
-        else
-        {
-            LED_SET_IDLE_PATTERN();
-        }
-    }
-
-    if (is_now(current_state, new_state, STATE_BIT_REVERSE))
-    {
-        if (!is(new_state, STATE_BIT_LED))
-        {
-            LED_SET_REVERSE_PATTERN();
-        }
-        if (!is(new_state, STATE_BIT_HORN))
-        {
-            buzzer_set_intermitent(1000, 500);
-        }
-    }
-    else if (was(current_state, new_state, STATE_BIT_REVERSE))
-    {
-        if (is(new_state, STATE_BIT_HORN))
-        {
-            // Don't do anything, because horn is already overriding the reverse chime
-        }
-        else
-        {
-            buzzer_set_off();
-        }
-
-        if (is(new_state, STATE_BIT_LED))
-        {
-            // Don't do anything, because horn is already overriding the reverse chime
-        }
-        else
-        {
-            LED_SET_IDLE_PATTERN();
-        }
+        LED_SET_IDLE_PATTERN();
     }
 
     // we want an angle between -31 to 32 and we have a number from -127 to 128
@@ -540,24 +520,17 @@ void process_state_during_driving_mode(uint8_t type, void *d, uint32_t current_s
 
     laser_set_position(data->analog.stick.rx, data->analog.stick.ry);
 
-    int col = obstruction_get_colision_status();
-    if (col & COLLISION_FRONT && !reverse)
-    {
-        set_throttle(0, 0);
-    }
-    else if (col & COLLISION_REAR && reverse)
-    {
-        set_throttle(0, 0);
-    }
-    else if (obstruction_is_too_close() && !reverse)
-    {
-        broadcast_log("Setting throttle to 0 while object is too close\n");
-        set_throttle(0, 0);
-    }
-    else
-    {
-        set_throttle(reverse ? data->analog.button.l2 : data->analog.button.r2, !reverse);
-    }
+    /*
+        int col = obstruction_get_colision_status();
+        if (col & COLLISION_FRONT || col & COLLISION_REAR || obstruction_is_too_close())
+        {
+            on_exit_driving_mode();
+            on_enter_error_mode();
+            return;
+        }
+    */
+
+    set_throttle(reverse ? data->analog.button.l2 : data->analog.button.r2, !reverse);
     process_steering(angle);
 }
 
@@ -677,6 +650,7 @@ void process_ps5_message(ps5_t *data)
 {
     static uint32_t current_state = 0;
 
+    metrics.main_battery = data->main_battery;
     bool pressing_cross = (data->button.cross != 0);
     bool controller_connected = data->controller_connected;
     bool pressing_led = (data->button.l1 != 0);

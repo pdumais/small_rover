@@ -15,20 +15,21 @@
 #include "common/i2c.h"
 #include "common/deepsleep.h"
 #include <esp_timer.h>
+#include "esp_adc/adc_oneshot.h"
 
 #define DUALSENSE_MAC "D0:BC:C1:EC:AD:AC"
 #define GPIO_CTRL_LED 5
 #define GPIO_PAIR 18
 #define GPIO_SLEEP_BUTTON GPIO_NUM_4
-
+#define ADC_RESULT_SIZE 256
 #define UART_TX_PIN 22
 #define UART_RX_PIN 23
-// #define UART_TX_PIN 17
-// #define UART_RX_PIN 16
+#define ADC_READ_LEN 256
 
 static const char *TAG = "ps5_main";
 static volatile ps5_t old_data = {0};
 static QueueHandle_t uart_queue;
+static adc_oneshot_unit_handle_t adc_battery_handle;
 
 void init_nvs()
 {
@@ -97,10 +98,14 @@ static unsigned long millis()
 void ps5_check(void *arg)
 {
     bool was_connected = 0;
-
+    esp_err_t err;
     unsigned long current_millis = millis();
     unsigned long turn_off_rumble_millis = 0;
+    int adc_result;
+    int adc_val = 0;
+    int average_count = 20;
 
+    int battery_mv = 0;
     while (1)
     {
         current_millis = millis();
@@ -176,7 +181,7 @@ void ps5_check(void *arg)
             memcpy(&old_data, data, sizeof(ps5_t));
             old_data.latestPacket = true;
             old_data.controller_connected = true;
-
+            old_data.main_battery = battery_mv;
             set_checksum(&old_data);
 
             uart_write_bytes(UART_NUM_2, &old_data, sizeof(ps5_t));
@@ -203,6 +208,20 @@ void ps5_check(void *arg)
                 ESP_LOGI(TAG, "SET RUMBLE %lu %lu", current_millis, turn_off_rumble_millis);
             }
         }
+
+        /*
+            13.29v -> 3200 (70%)
+            13.19v -> 2931
+        */
+        ESP_ERROR_CHECK(adc_oneshot_read(adc_battery_handle, ADC_CHANNEL_5, &adc_result));
+        adc_val += ((adc_result * 3276) / 4096); // values chosen during calibration
+        average_count--;
+        if (average_count == 0)
+        {
+            battery_mv = adc_val / 20;
+            average_count = 20;
+            adc_val = 0;
+        }
     }
 }
 
@@ -227,6 +246,15 @@ void on_start_sleep()
     gpio_set_level(GPIO_CTRL_LED, 0);
 }
 
+/*static bool IRAM_ATTR s_conv_done_cb(adc_continuous_handle_t handle, const adc_continuous_evt_data_t *edata, void *user_data)
+{
+    BaseType_t mustYield = pdFALSE;
+    // Notify that ADC continuous driver has done enough number of conversions
+    // vTaskNotifyGiveFromISR(s_task_handle, &mustYield);
+
+    return (mustYield == pdTRUE);
+}*/
+
 void app_main(void)
 {
     init_nvs();
@@ -249,6 +277,45 @@ void app_main(void)
     o_conf.pull_up_en = 1;
     o_conf.pull_down_en = 0;
     gpio_config(&o_conf);
+
+    /*
+    adc_continuous_handle_cfg_t adc_config = {
+        .max_store_buf_size = 1024,
+        .conv_frame_size = ADC_READ_LEN,
+    };
+    ESP_ERROR_CHECK(adc_continuous_new_handle(&adc_config, &adc_battery_handle));
+
+    adc_continuous_config_t dig_cfg = {
+        .sample_freq_hz = 20 * 1000,
+        .conv_mode = ADC_CONV_SINGLE_UNIT_1,
+        .format = ADC_DIGI_OUTPUT_FORMAT_TYPE1,
+    };
+
+    adc_digi_pattern_config_t adc_pattern[1] = {0};
+    dig_cfg.pattern_num = 1;
+    adc_pattern[0].atten = ADC_ATTEN_DB_12;
+    adc_pattern[0].channel = ADC_CHANNEL_5 & 0x7;
+    adc_pattern[0].unit = ADC_UNIT_1;
+    adc_pattern[0].bit_width = ADC_BITWIDTH_12;
+    dig_cfg.adc_pattern = adc_pattern;
+    ESP_ERROR_CHECK(adc_continuous_config(adc_battery_handle, &dig_cfg));
+
+    adc_continuous_evt_cbs_t cbs = {
+        .on_conv_done = s_conv_done_cb,
+    };
+    ESP_ERROR_CHECK(adc_continuous_register_event_callbacks(adc_battery_handle, &cbs, NULL));
+    ESP_ERROR_CHECK(adc_continuous_start(adc_battery_handle));
+    */
+
+    adc_oneshot_unit_init_cfg_t init_config1 = {
+        .unit_id = ADC_UNIT_1,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc_battery_handle));
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+        .atten = ADC_ATTEN_DB_12,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_battery_handle, ADC_CHANNEL_5, &config));
 
     uart_init();
     ps5_begin(DUALSENSE_MAC);
