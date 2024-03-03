@@ -6,7 +6,6 @@
 #include <esp_event_base.h>
 #include "hardware.h"
 #include "common.h"
-#include "driver/ledc.h"
 #include "driver/pcnt.h"
 #include "led_sequence.h"
 #include "common/ps5_data.h"
@@ -25,6 +24,7 @@
 #include "uart.h"
 #include "laser.h"
 #include "sensors.h"
+#include "pwm.h"
 
 #define PCNT_UNIT_MOTOR1 PCNT_UNIT_0
 #define PCNT_UNIT_MOTOR2 PCNT_UNIT_1
@@ -151,17 +151,11 @@ void process_throttle()
 
     if (current_direction == 1)
     {
-        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0));
-        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
-        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, throttle));
-        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1));
+        pwm_set_motor_duty_cycles(0, throttle);
     }
     else
     {
-        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0));
-        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1));
-        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, throttle));
-        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
+        pwm_set_motor_duty_cycles(throttle, 0);
     }
 }
 
@@ -497,7 +491,8 @@ void process_state_during_driving_mode(uint8_t type, void *d, uint32_t current_s
     {
         // only do this after the transition
         metrics.horn = 1;
-        buzzer_set_freq(100);
+        uint16_t f[] = BUZZER_CHIME_CUCARACHA();
+        buzzer_set_freq(f, sizeof(f));
     }
     else if (was(current_state, new_state, STATE_BIT_HORN))
     {
@@ -680,44 +675,6 @@ void process_ps5_message(ps5_t *data)
     current_state = new_state;
 }
 
-void pwm_motor_init()
-{
-
-// Don't let the naming fool you. LEDC is not for LED control. It is the name of the peripheral
-// in the ESP32 for controlling a LED but it is really just a PWM controller
-#define LEDC_TIMER LEDC_TIMER_0
-#define LEDC_MODE LEDC_LOW_SPEED_MODE
-#define LEDC_DUTY_RES LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
-#define LEDC_FREQUENCY (4000)           // Frequency in Hertz. Set frequency at 4 kHz
-    ledc_timer_config_t ledc_timer = {
-        .speed_mode = LEDC_MODE,
-        .duty_resolution = LEDC_DUTY_RES,
-        .timer_num = LEDC_TIMER,
-        .freq_hz = LEDC_FREQUENCY, // Set output frequency at 4 kHz
-        .clk_cfg = LEDC_AUTO_CLK};
-    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
-
-    ledc_channel_config_t ledc_channel = {
-        .speed_mode = LEDC_MODE,
-        .channel = LEDC_CHANNEL_0,
-        .timer_sel = LEDC_TIMER,
-        .intr_type = LEDC_INTR_DISABLE,
-        .gpio_num = GPIO_MOTOR_PWM1,
-        .duty = 0,
-        .hpoint = 0};
-    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
-
-    ledc_channel_config_t ledc_channel2 = {
-        .speed_mode = LEDC_MODE,
-        .channel = LEDC_CHANNEL_1,
-        .timer_sel = LEDC_TIMER,
-        .intr_type = LEDC_INTR_DISABLE,
-        .gpio_num = GPIO_MOTOR_PWM2,
-        .duty = 0,
-        .hpoint = 0};
-    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel2));
-}
-
 static void IRAM_ATTR pcnt_isr(void *arg)
 {
     motor_pcnt *pcnt = (motor_pcnt *)arg;
@@ -802,7 +759,7 @@ void hardware_init()
     servo_create(GPIO_STEERING, &comparator_steering);
     arm_init();
     laser_init();
-    pwm_motor_init();
+    pwm_init();
     pcnt_motor_init(&motor1_pcnt, MOTOR1SENSOR1, MOTOR1SENSOR2);
     pcnt_motor_init(&motor2_pcnt, MOTOR2SENSOR1, MOTOR2SENSOR2);
     pcnt_motor_init(&motor3_pcnt, MOTOR3SENSOR1, MOTOR3SENSOR2);
