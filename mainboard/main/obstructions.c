@@ -111,6 +111,7 @@ static void check_obstructions_task()
 
         if (sweep_enabled)
         {
+
             servo_set_angle(&comparator, servo_angle);
             hcsr04_trigger(&ultrasonic);
 

@@ -5,6 +5,7 @@
 
 #include "buzzer.h"
 #include "hw_def.h"
+#include "driver/ledc.h"
 
 static const char *TAG = "buzzer_c";
 static QueueHandle_t xQueue;
@@ -21,7 +22,7 @@ typedef struct
     {
         uint32_t on;
         uint32_t off;
-        
+
     } flash_cmd;
 } q_msg;
 
@@ -38,17 +39,31 @@ void buzzer_task(void *arg)
             ESP_LOGI(TAG, "LED queue msg received");
             if (msg.command == COMMAND_OFF)
             {
-                gpio_set_level(GPIO_BUZZER1, 0);
+                ledc_timer_pause(LEDC_LOW_SPEED_MODE, LEDC_TIMER_1);
             }
             else if (msg.command == COMMAND_ON)
             {
-                gpio_set_level(GPIO_BUZZER1, 1);
+                ledc_timer_resume(LEDC_LOW_SPEED_MODE, LEDC_TIMER_1);
+                ESP_ERROR_CHECK(ledc_set_freq(LEDC_LOW_SPEED_MODE, LEDC_TIMER_1, 220));
             }
             else if (msg.command == COMMAND_FREQ)
             {
-                //gpio_set_level(GPIO_BUZZER1, 1);
+                // TODO: make this configurable
+                int f[] = {220, 440, 880};
+                int i = 0;
+                ledc_timer_resume(LEDC_LOW_SPEED_MODE, LEDC_TIMER_1);
+                while (!uxQueueMessagesWaiting(xQueue))
+                {
+                    ESP_ERROR_CHECK(ledc_set_freq(LEDC_LOW_SPEED_MODE, LEDC_TIMER_1, f[i]));
+                    i++;
+                    if (i >= (sizeof(f) / sizeof(int)))
+                    {
+                        i = 0;
+                    }
+                    vTaskDelay(200 / portTICK_PERIOD_MS);
+                }
             }
-            else if (msg.command == COMMAND_INTERMITENT)
+            /*else if (msg.command == COMMAND_INTERMITENT)
             {
                 uint8_t op = 0;
                 while (!uxQueueMessagesWaiting(xQueue))
@@ -66,7 +81,7 @@ void buzzer_task(void *arg)
                         vTaskDelay(msg.flash_cmd.off / portTICK_PERIOD_MS);
                     }
                 }
-            }
+            }*/
         }
     }
 }
@@ -109,13 +124,25 @@ void buzzer_init()
 {
     xQueue = xQueueCreate(4, sizeof(q_msg));
 
-    gpio_config_t o_conf = {};
-    o_conf.pin_bit_mask |= (1ULL << GPIO_BUZZER1);
-    o_conf.intr_type = GPIO_INTR_DISABLE;
-    o_conf.mode = GPIO_MODE_OUTPUT;
-    o_conf.pull_up_en = 0;
-    o_conf.pull_down_en = 1;
-    gpio_config(&o_conf);
+    // Don't let the naming fool you. LEDC is not for LED control. It is the name of the peripheral
+    // in the ESP32 for controlling a LED but it is really just a PWM controller
+    ledc_timer_config_t ledc_timer = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_13_BIT,
+        .timer_num = LEDC_TIMER_1,
+        .freq_hz = 10,
+        .clk_cfg = LEDC_AUTO_CLK};
+    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+
+    ledc_channel_config_t ledc_channel = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = LEDC_CHANNEL_2,
+        .timer_sel = LEDC_TIMER_1,
+        .intr_type = LEDC_INTR_DISABLE,
+        .gpio_num = GPIO_BUZZER1,
+        .duty = 75,
+        .hpoint = 0};
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 
     xTaskCreate(buzzer_task, "buzzer_task", 4096, NULL, 5, NULL);
 }

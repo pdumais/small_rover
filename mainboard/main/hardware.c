@@ -304,7 +304,7 @@ void on_exit_replay_mode()
 void on_enter_driving_mode()
 {
 
-    obstruction_enable_sweep(true);
+    // TODO: re-enable this obstruction_enable_sweep(true);
     laser_trigger(false);
     laser_set_position(0, 0);
 
@@ -814,6 +814,7 @@ void hardware_init()
     record_init();
 
     on_enter_disconnected_mode();
+
     // Using a task scheduler would be more appropriate here to be able to set priorities
     xTaskCreate(check_rpm, "check_rpm", 4096, NULL, 5, &rpm_task);
 }
