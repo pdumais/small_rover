@@ -1,7 +1,25 @@
+New board
+    Sonar green wire is cut
+    laser server gets loose
+
+
+Doc Board problems
+    Opposite side motors must have pins swapped
+    noise on servos because of motor lines. Must add 1k resistor
+
 # Tasks
     Obstacle detection 
         when entering driving mode, must check for obstruction and block trigger + rumble
         while driving, detect object from a longer distance to give time to brake
+
+    Auto-calibration
+        on boot, for a few seconds. Set LED to indicate that system is calibrating
+        accelerometer: X,Y should be 0, Z should be 9.8
+        Magneto: The device would need to be facing north. A compass would need to be installed on the device
+                 Maybe calibration should be on demand then instead of on reboot
+        ADC for battery
+                would need to build another board that would vary a voltage on the ADC and detect it. This is an elaborate circuit
+        
 
 # Bugs
 Speed metrics is wrong
@@ -16,3 +34,6 @@ ps5 controller battery level is accurate?
 curl -N -i -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" http://192.168.4.1/telemetry -vvv --output -
 
 https://youtu.be/MDsiWHeAhvQ
+
+
+

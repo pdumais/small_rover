@@ -10,9 +10,10 @@
 
 void pwm_set_motor_duty_cycles(int d1, int d2)
 {
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, CHANNEL_MOTOR_FWD, d1));
+
+    ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, CHANNEL_MOTOR_FWD, d1 >> 1)); // divide by 2 because resolution is now 12 instead of 13. We could just change the lookup table too
     ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, CHANNEL_MOTOR_FWD));
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, CHANNEL_MOTOR_RV, d2));
+    ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, CHANNEL_MOTOR_RV, d2 >> 1)); // divide by 2 because resolution is now 12 instead of 13. We could just change the lookup table too
     ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, CHANNEL_MOTOR_RV));
 }
 
@@ -64,9 +65,9 @@ void pwm_init()
     // Motor PWMs
     ledc_timer_config_t ledc_timer1 = {
         .speed_mode = LEDC_LOW_SPEED_MODE,
-        .duty_resolution = LEDC_TIMER_13_BIT,
+        .duty_resolution = LEDC_TIMER_12_BIT,
         .timer_num = TIMER_MOTORS,
-        .freq_hz = 4000, // Set output frequency at 4 kHz
+        .freq_hz = 19500,
         .clk_cfg = LEDC_AUTO_CLK};
     ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer1));
 

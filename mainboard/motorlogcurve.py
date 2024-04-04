@@ -3,8 +3,6 @@ import math
 # I got these numbers just from trial and error by generating graphs on https://www.desmos.com/calculator
 b = 1.02
 k = 23.4
-# b = 1.01
-# k = 7.55  # to reach 4096 instead
 
 lst = [round(k * math.log((x + 1) * 4, b)) for x in range(0, 255)]
 lst[0] = 0

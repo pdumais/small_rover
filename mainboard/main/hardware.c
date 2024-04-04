@@ -151,11 +151,11 @@ void process_throttle()
 
     if (current_direction == 1)
     {
-        pwm_set_motor_duty_cycles(0, throttle);
+        pwm_set_motor_duty_cycles(throttle, 0);
     }
     else
     {
-        pwm_set_motor_duty_cycles(throttle, 0);
+        pwm_set_motor_duty_cycles(0, throttle);
     }
 }
 

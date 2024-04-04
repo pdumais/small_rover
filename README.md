@@ -82,6 +82,12 @@ I created a PCB design to make things a bit more cleaner. I dit not receive the 
 <p style="text-align: center;"><img src='doc/board.png' width='550'></p>
 <p style="text-align: center;"><img src='doc/schematic.png' width='550'></p>
 
+** Update April 2nd.
+
+I finally got the board mounted on the robot.  As with all boards I make, there are a few design flaws on this one. But nothing that can't be fixed. The first issue is that I didn't think about the fact the motors on the right side would need to turn the opposite way from the ones on the left side. So I should've reverse the ouput lines comming from the motor driver for those. The fix was to simply reverse the pins on the motor connectors.
+
+The 2nd flaw is that the 3 signal lines going to the servos for the laser and the sonar are running right above the motor output lines. So when I start the motors, it creates noise on the signal lines and the servos are going crazy. The fix for this was to add a 1k resistor inline on the signal cables. I'm not sure if that's the right fix, but it does work. It's nice to see how the noise being introduced is proportional to the current being used by the motors. For example, noise only happens what starting the motors or stopping them. I understand how electromagnectic induction works, but I didn't think it would be this sensitive.
+<p style="text-align: center;"><img src='doc/PXL_20240330_201048917.jpg' width='550'></p>
 
 # Mechanical Arm
 The goal was to be able to lift a 500ml can of beer.

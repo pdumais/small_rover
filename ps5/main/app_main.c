@@ -211,7 +211,9 @@ void ps5_check(void *arg)
 
         /*
             13.29v -> 3200 (70%)
-            13.19v -> 2931
+            13.12v -> 3080
+            13.09v -> 3070
+            13.08V -> 3056
         */
         ESP_ERROR_CHECK(adc_oneshot_read(adc_battery_handle, ADC_CHANNEL_5, &adc_result));
         adc_val += ((adc_result * 3276) / 4096); // values chosen during calibration
